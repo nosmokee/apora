@@ -35,8 +35,9 @@
           ]
         }
       ],
-      "signAndEditExecutable": false,
-      "artifactName": "Opora-1.0.0-Windows-x64.exe"
+      "signAndEditExecutable": true,
+      "artifactName": "Opora-1.0.0-Windows-x64.exe",
+      "icon": "app/icon.ico"
     },
     "portable": {
       "artifactName": "Opora-1.0.0-Windows-x64.exe",

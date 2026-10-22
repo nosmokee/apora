@@ -1,4 +1,4 @@
-name: Replace 1.0.0 installers with Russian and English only
+name: Replace 1.0.0 installers with blue icon
 on:
   workflow_dispatch:
 permissions:
@@ -41,6 +41,25 @@ jobs:
           p=Path('windows/dist/Opora-1.0.0-Windows-x64.exe')
           assert p.stat().st_size>20000000
           with p.open('rb') as f: assert f.read(2)==b'MZ'
+      - name: Verify blue icon in portable and application executables
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          foreach ($file in @('windows/dist/Opora-1.0.0-Windows-x64.exe', 'windows/dist/win-unpacked/Opora.exe')) {
+            $icon = [System.Drawing.Icon]::ExtractAssociatedIcon((Resolve-Path $file))
+            if ($null -eq $icon) { throw "Missing executable icon: $file" }
+            $bitmap = $icon.ToBitmap()
+            $blue = 0
+            for ($x = 0; $x -lt $bitmap.Width; $x++) {
+              for ($y = 0; $y -lt $bitmap.Height; $y++) {
+                $c = $bitmap.GetPixel($x, $y)
+                if ([Math]::Abs([int]$c.R-35) -lt 12 -and [Math]::Abs([int]$c.G-100) -lt 12 -and [Math]::Abs([int]$c.B-232) -lt 12) { $blue++ }
+              }
+            }
+            if ($blue -lt ($bitmap.Width * $bitmap.Height * 0.25)) { throw "Incorrect executable icon: $file" }
+            $bitmap.Dispose(); $icon.Dispose()
+            Write-Output "BLUE_ICON_OK $file"
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: windows-release
@@ -110,6 +129,7 @@ jobs:
       - name: Package standalone HTML and iPhone PWA
         run: |
           python3 web-source/build.py
+          python3 tests/test-icons.py
           python3 - <<'PY'
           from pathlib import Path
           import shutil,zipfile,re
