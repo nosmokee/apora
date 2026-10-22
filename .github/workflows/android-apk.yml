@@ -1,0 +1,62 @@
+name: Build Android APK only
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Install Android build tools
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Build canonical HTML
+        run: |
+          python3 web-source/build.py
+          cp web-source/index.html android/app/src/main/assets/index.html
+      - name: Restore signing key to temporary runner storage
+        env:
+          KEYSTORE_B64: ${{ secrets.OPORA_ANDROID_KEYSTORE_B64 }}
+          OPORA_KEYSTORE_PASSWORD: ${{ secrets.OPORA_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64"
+          test -n "$OPORA_KEYSTORE_PASSWORD"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/opora-next.p12"
+          chmod 600 "$RUNNER_TEMP/opora-next.p12"
+      - name: Build signed Android release
+        env:
+          OPORA_KEYSTORE_PATH: ${{ runner.temp }}/opora-next.p12
+          OPORA_KEYSTORE_PASSWORD: ${{ secrets.OPORA_ANDROID_KEYSTORE_PASSWORD }}
+        run: gradle -p android assembleRelease --no-daemon
+      - name: Verify APK signature and package identity
+        env:
+          OPORA_KEYSTORE_PASSWORD: ${{ secrets.OPORA_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          mkdir -p release-files
+          cp android/app/build/outputs/apk/release/app-release.apk release-files/Opora-0.8.1-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-files/Opora-0.8.1-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging release-files/Opora-0.8.1-Android.apk > "$RUNNER_TEMP/badging.txt"
+          grep "name='ru.opora.study.next'" "$RUNNER_TEMP/badging.txt"
+          grep "versionName='0.8.1'" "$RUNNER_TEMP/badging.txt"
+          grep -x "application-label:'Опора'" "$RUNNER_TEMP/badging.txt"
+          keytool -exportcert -rfc -alias opora-next -keystore "$RUNNER_TEMP/opora-next.p12" -storepass:env OPORA_KEYSTORE_PASSWORD -file release-files/Android-signing-certificate.pem
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/opora-next.p12"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: release-files/*
+          if-no-files-found: error
