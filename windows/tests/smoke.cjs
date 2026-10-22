@@ -24,14 +24,16 @@ app.on('browser-window-created',(_event,win)=>{
     setView('translate');if(!document.getElementById('translation-form'))throw Error('Translator');
     document.getElementById('translation-direction').value='ru';document.getElementById('translation-direction').dispatchEvent(new Event('change'));
     if(document.getElementById('translation-submit').textContent!=='Перевести на английский')throw Error('Translation direction');
-    if(DB.examBank.tasks.length!==60)throw Error('Offline bank count');
-    setView('offline-exams');if(document.querySelectorAll('.exam-task').length!==60)throw Error('Offline bank rendering');
+    if(DB.examBank.tasks.length!==56)throw Error('Offline bank count');
+    if(DB.examBank.tasks.filter(t=>t.subject==='Математика').length!==16)throw Error('Math example count');
+    if(DB.examBank.tasks.some(t=>t.subject.endsWith('язык')&&!['Русский язык','Английский язык'].includes(t.subject)))throw Error('Unexpected language');
+    setView('offline-exams');if(document.querySelectorAll('.exam-task').length!==56)throw Error('Offline bank rendering');
     if(!OporaExams.solve('2x+3=11').answer.includes('4'))throw Error('Offline equation');
     if(!OporaExams.solve('Найди ток: напряжение 12 В; сопротивление 6 Ом').answer.includes('2'))throw Error('Offline current');
     for(const t of OporaExams.templates)if(!OporaExams.solve(t.example).answer)throw Error('Offline template');
     let rejected=false;try{OporaExams.solve('Реши любую неизвестную задачу')}catch(e){rejected=true}if(!rejected)throw Error('Unsupported condition not rejected');
     if(OporaHomework.getNotes().length!==1)throw Error('Notes after exams');
-    return {version:DB.version,materials:DB.cards.length,homework:true,translator:true,credit:true,offlineTasks:60,offlineTemplates:OporaExams.templates.length};
+    return {version:DB.version,materials:DB.cards.length,homework:true,translator:true,credit:true,offlineTasks:56,offlineTemplates:OporaExams.templates.length};
    })()`,true);
    console.log('DESKTOP_SMOKE_OK '+JSON.stringify(result));clearTimeout(deadline);app.exit(0);
   }catch(e){console.error(e);clearTimeout(deadline);app.exit(1);}

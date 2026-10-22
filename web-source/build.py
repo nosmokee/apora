@@ -16,7 +16,7 @@ db['elements']=json.loads((p/'elements.json').read_text(encoding='utf-8'))
 db['geography']=json.loads((p/'geography.json').read_text(encoding='utf-8'))
 db['morphology']=json.loads((p/'morphology.json').read_text(encoding='utf-8'))
 db['examBank']=json.loads((p/'exam-bank.json').read_text(encoding='utf-8'))
-assert len(db['examBank']['tasks'])==60 and len({t['id'] for t in db['examBank']['tasks']})==60
+assert len(db['examBank']['tasks'])==56 and len({t['id'] for t in db['examBank']['tasks']})==56
 assert all(t['q'] and t['answer'] and len(t['steps'])>=3 for t in db['examBank']['tasks'])
 db['assets']={}
 for a in json.loads((p/'image_credits.json').read_text(encoding='utf-8')):

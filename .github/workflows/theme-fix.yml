@@ -1,4 +1,4 @@
-name: Replace 1.0.0 installers with spacing fixes
+name: Replace 1.0.0 installers with Russian and English only
 on:
   workflow_dispatch:
 permissions:
