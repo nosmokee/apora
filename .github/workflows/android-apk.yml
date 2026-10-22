@@ -45,11 +45,11 @@ jobs:
           OPORA_KEYSTORE_PASSWORD: ${{ secrets.OPORA_ANDROID_KEYSTORE_PASSWORD }}
         run: |
           mkdir -p release-files
-          cp android/app/build/outputs/apk/release/app-release.apk release-files/Opora-0.9.0-Android.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-files/Opora-0.9.0-Android.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging release-files/Opora-0.9.0-Android.apk > "$RUNNER_TEMP/badging.txt"
+          cp android/app/build/outputs/apk/release/app-release.apk release-files/Opora-1.0.0-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-files/Opora-1.0.0-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging release-files/Opora-1.0.0-Android.apk > "$RUNNER_TEMP/badging.txt"
           grep "name='ru.opora.study.next'" "$RUNNER_TEMP/badging.txt"
-          grep "versionName='0.9.0'" "$RUNNER_TEMP/badging.txt"
+          grep "versionName='1.0.0'" "$RUNNER_TEMP/badging.txt"
           grep -x "application-label:'Опора'" "$RUNNER_TEMP/badging.txt"
           keytool -exportcert -rfc -alias opora-next -keystore "$RUNNER_TEMP/opora-next.p12" -storepass:env OPORA_KEYSTORE_PASSWORD -file release-files/Android-signing-certificate.pem
       - name: Remove temporary signing key

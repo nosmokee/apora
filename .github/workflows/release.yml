@@ -7,7 +7,7 @@ on:
       release_tag:
         description: Existing version tag to build
         required: true
-        default: v0.9.0
+        default: v1.0.0
         type: string
 permissions:
   contents: read
@@ -46,13 +46,13 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          p=Path('windows/dist/Opora-0.9.0-Windows-x64.exe')
+          p=Path('windows/dist/Opora-1.0.0-Windows-x64.exe')
           assert p.stat().st_size>20000000
           with p.open('rb') as f: assert f.read(2)==b'MZ'
       - uses: actions/upload-artifact@v4
         with:
           name: windows-release
-          path: windows/dist/Opora-0.9.0-Windows-x64.exe
+          path: windows/dist/Opora-1.0.0-Windows-x64.exe
           if-no-files-found: error
   android:
     runs-on: ubuntu-latest
@@ -95,11 +95,11 @@ jobs:
           OPORA_KEYSTORE_PASSWORD: ${{ secrets.OPORA_ANDROID_KEYSTORE_PASSWORD }}
         run: |
           mkdir -p release-files
-          cp android/app/build/outputs/apk/release/app-release.apk release-files/Opora-0.9.0-Android.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-files/Opora-0.9.0-Android.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging release-files/Opora-0.9.0-Android.apk > "$RUNNER_TEMP/badging.txt"
+          cp android/app/build/outputs/apk/release/app-release.apk release-files/Opora-1.0.0-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-files/Opora-1.0.0-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging release-files/Opora-1.0.0-Android.apk > "$RUNNER_TEMP/badging.txt"
           grep "name='ru.opora.study.next'" "$RUNNER_TEMP/badging.txt"
-          grep "versionName='0.9.0'" "$RUNNER_TEMP/badging.txt"
+          grep "versionName='1.0.0'" "$RUNNER_TEMP/badging.txt"
           keytool -exportcert -rfc -alias opora-next -keystore "$RUNNER_TEMP/opora-next.p12" -storepass:env OPORA_KEYSTORE_PASSWORD -file release-files/Android-signing-certificate.pem
       - name: Remove temporary signing key
         if: always()
@@ -124,12 +124,12 @@ jobs:
           root=Path('.')
           out=Path('release-files');out.mkdir()
           html=(root/'web-source/index.html').read_text()
-          assert 'Опора · 0.9.0' in html and 'Сделано NoSmoke' in html and 'opora-homework-v1' in html
+          assert 'Опора · 1.0.0' in html and 'Сделано NoSmoke' in html and 'opora-homework-v1' in html
           for cls in ['nav','footer-nav']:
               nav=re.search(r'<nav class="'+cls+r'"[^>]*>(.*?)</nav>',html,re.S).group(1)
               assert re.findall(r'data-view="([^"]+)"',nav)[-1]=='homework'
-          shutil.copy2(root/'web-source/index.html',out/'Opora-0.9.0.html')
-          with zipfile.ZipFile(out/'Opora-0.9.0-iPhone-PWA.zip','w',zipfile.ZIP_DEFLATED) as z:
+          shutil.copy2(root/'web-source/index.html',out/'Opora-1.0.0.html')
+          with zipfile.ZipFile(out/'Opora-1.0.0-iPhone-PWA.zip','w',zipfile.ZIP_DEFLATED) as z:
               for name in ['index.html','sw.js','manifest.webmanifest','icon-192.png','icon-512.png']:
                   z.write(root/'web-source'/name,name)
               for name in ['ELEMENTS_LICENSE.md','MORPHOLOGY_LICENSE.md']:
@@ -200,5 +200,5 @@ jobs:
           RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
         run: |
           TAG="$RELEASE_TAG"
-          gh release create "$TAG" release-files/* --verify-tag --draft --title 'Опора 0.9.0 — Windows, Android, iPhone PWA' --notes-file release/NOTES-v0.9.0.md
+          gh release create "$TAG" release-files/* --verify-tag --draft --title 'Опора 1.0.0 — Windows, Android, iPhone PWA' --notes-file release/NOTES-v1.0.0.md
           gh release edit "$TAG" --draft=false --latest

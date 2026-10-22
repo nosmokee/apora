@@ -30,8 +30,8 @@ document.addEventListener('keydown',event=>{
 },true);
 
 const gradeRenderCards=renderCards;
-renderCards=function(){
- gradeRenderCards();
+renderCards=function(limit){
+ gradeRenderCards(limit);
  const select=$('#grade');if(!select)return;
  $('#grade-feedback')?.remove();
  if(!filters.grade)return;
