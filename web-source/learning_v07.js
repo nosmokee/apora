@@ -7,7 +7,7 @@ setView=function(v){
  activeView=v;document.body.dataset.screen=v;
  $$('[data-view]').forEach(b=>{const on=b.dataset.view===v;b.classList.toggle('active',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
  $('#page-title').textContent=v==='translate'?'Переводчик':'Задачи по предметам';
- $('#page-intro').textContent=v==='translate'?'Английский → русский':'Числовые модели с объяснением. Работают без интернета.';
+ $('#page-intro').textContent=v==='translate'?'Английский ↔ русский':'Числовые модели с объяснением. Работают без интернета.';
  if(v==='translate')renderTranslator();else renderSubjectPractice();window.scrollTo(0,0);
 };
 function translationChunks(text,maxBytes=450){
@@ -22,41 +22,76 @@ function translationChunks(text,maxBytes=450){
 }
 const nativeTranslations=new Map();let nativeSequence=0;
 window.oporaTranslationResult=function(id,payload){const request=nativeTranslations.get(id);if(!request)return;nativeTranslations.delete(id);clearTimeout(request.timer);payload.error?request.reject(Error(payload.error)):request.resolve(payload);};
-function nativeTranslate(text,signal){return new Promise((resolve,reject)=>{
- const id=String(++nativeSequence),timer=setTimeout(()=>{nativeTranslations.delete(id);reject(Error('Сервис не ответил вовремя.'));},20000);
- const fail=()=>{clearTimeout(timer);nativeTranslations.delete(id);reject(new DOMException('Отменено','AbortError'));};
- if(signal.aborted){fail();return;}signal.addEventListener('abort',fail,{once:true});
- nativeTranslations.set(id,{timer,resolve:p=>{signal.removeEventListener('abort',fail);resolve(p);},reject:e=>{signal.removeEventListener('abort',fail);reject(e);}});
- try{window.OporaFiles.translateEnglish(id,text);}catch(e){clearTimeout(timer);nativeTranslations.delete(id);signal.removeEventListener('abort',fail);reject(e);}
+function nativeRequest(invoke,signal,ms=60000){return new Promise((resolve,reject)=>{
+ const id=String(++nativeSequence);
+ const finish=()=>{clearTimeout(timer);nativeTranslations.delete(id);signal?.removeEventListener('abort',fail);};
+ const fail=()=>{finish();reject(new DOMException('Отменено','AbortError'));};
+ const timer=setTimeout(()=>{finish();reject(Error('Время ожидания истекло. Проверь состояние пакета и повтори.'));},ms);
+ if(signal?.aborted){fail();return;}signal?.addEventListener('abort',fail,{once:true});
+ nativeTranslations.set(id,{timer,resolve:p=>{finish();resolve(p);},reject:e=>{finish();reject(e);}});
+ try{invoke(id);}catch(e){finish();reject(e);}
  });}
 function decodeTranslation(raw){
  if(Number(raw.responseStatus)!==200||raw.quotaFinished)throw Error(raw.quotaFinished||Number(raw.responseStatus)===429?'Лимит сервиса исчерпан. Попробуй позже.':'Сервис не смог перевести текст. Попробуй позже.');
  const value=raw.responseData?.translatedText;if(typeof value!=='string'||!value.trim())throw Error('Сервис вернул пустой ответ.');
- // Decode provider HTML entities once; output is always assigned through textContent.
  const d=new DOMParser().parseFromString(value,'text/html');return d.body.textContent||value;
 }
-async function requestTranslation(chunk,signal){
- if(window.OporaFiles&&typeof window.OporaFiles.translateEnglish==='function')return decodeTranslation(await nativeTranslate(chunk,signal));
- const r=await fetch('https://api.mymemory.translated.net/get?langpair=en%7Cru&q='+encodeURIComponent(chunk),{signal,cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
+async function requestTranslation(chunk,signal,from='en'){
+ const bridge=window.OporaFiles;
+ if(typeof bridge?.translateOnline==='function')return decodeTranslation(await nativeRequest(id=>bridge.translateOnline(id,chunk,from),signal));
+ if(from==='en'&&typeof bridge?.translateEnglish==='function')return decodeTranslation(await nativeRequest(id=>bridge.translateEnglish(id,chunk),signal));
+ if(bridge&&from==='ru')throw Error('Для русского → английского обнови Android-приложение.');
+ const pair=from==='ru'?'ru|en':'en|ru';
+ const r=await fetch('https://api.mymemory.translated.net/get?langpair='+encodeURIComponent(pair)+'&q='+encodeURIComponent(chunk),{signal,cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
  if(!r.ok)throw Error(r.status===429?'Лимит сервиса исчерпан. Попробуй позже.':'Ошибка сервиса: '+r.status);return decodeTranslation(await r.json());
 }
 function renderTranslator(){
- $('#view').innerHTML=`<section class="panel translator-panel"><p>Перевод выполняет MyMemory через интернет. Текст отправляется стороннему сервису только после нажатия кнопки. Не вводи пароли, персональные или секретные данные.</p><form id="translation-form"><label for="translation-source">Текст на английском</label><textarea id="translation-source" rows="7" maxlength="1500" placeholder="Вставь английский текст…" required></textarea><p class="fine">До 1500 символов за раз. У сервиса есть суточные ограничения; большие фрагменты делятся на части, поэтому проверь связность перевода.</p><div class="actions"><button class="primary" id="translation-submit" type="submit">Перевести на русский</button><button id="translation-clear" type="button">Очистить</button></div></form><p id="translation-status" role="status" aria-live="polite"></p><h2>Перевод</h2><div id="translation-output" class="translation-output" tabindex="0" aria-label="Перевод на русский"></div><button id="translation-copy" type="button" hidden>Копировать перевод</button><p class="fine">Перевод и исходный текст не сохраняются в истории приложения. Сервис может обрабатывать запросы по своим правилам. Машинный перевод может ошибаться.</p><p><a href="https://mymemory.translated.net/doc/spec.php" target="_blank" rel="noopener">Описание сервиса ↗</a> · <a href="https://mymemory.translated.net/doc/usagelimits.php" target="_blank" rel="noopener">Лимиты ↗</a></p></section>`;
- const source=$('#translation-source'),status=$('#translation-status'),output=$('#translation-output'),button=$('#translation-submit'),copy=$('#translation-copy');
+ const nativeOffline=typeof window.OporaFiles?.offlineTranslation==='function';
+ $('#view').innerHTML=`<section class="panel translator-panel"><form id="translation-form"><label for="translation-direction">Направление перевода</label><select id="translation-direction"><option value="en">Английский → русский</option><option value="ru">Русский → английский</option></select><button type="button" id="translation-swap">⇄ Поменять языки</button><label for="translation-mode">Режим</label><select id="translation-mode"><option value="offline" ${nativeOffline?'':'disabled'}>Без интернета · Android</option><option value="online">Через интернет · MyMemory</option></select><p id="translation-info" class="fine"></p><section id="translation-model" ${nativeOffline?'':'hidden'}><p>Языковой пакет Google ML Kit: около 30 МБ. Один раз скачай через интернет, затем переводи в авиарежиме. Пакет занимает место в данных приложения, это не растущий HTTP-кеш.</p><label><input id="translation-cellular" type="checkbox"> Разрешить загрузку через мобильную сеть</label><div class="actions"><button type="button" id="translation-download">Скачать пакет</button><button type="button" id="translation-model-refresh">Проверить пакет</button><button type="button" id="translation-delete-model">Удалить пакет</button></div><p id="translation-model-status" role="status" aria-live="polite"></p></section><label id="translation-source-label" for="translation-source">Текст на английском</label><textarea id="translation-source" rows="7" maxlength="1500" placeholder="Вставь английский текст…" required></textarea><p class="fine" id="translation-limit"></p><div class="actions"><button class="primary" id="translation-submit" type="submit">Перевести на русский</button><button id="translation-clear" type="button">Очистить</button></div></form><p id="translation-status" role="status" aria-live="polite"></p><h2 id="translation-target-label">Перевод на русский</h2><div id="translation-output" class="translation-output" tabindex="0" aria-label="Перевод на русский"></div><p id="translation-attribution" hidden><a href="https://translate.google.com/" target="_blank" rel="noopener">powered by Google Translate</a> · автоматический перевод на устройстве</p><button id="translation-copy" type="button" hidden>Копировать перевод</button><p class="fine">Исходный текст и перевод не сохраняются в истории приложения. Машинный перевод может ошибаться: проверяй смысл, имена и термины. Google не предоставляет гарантий точности или надёжности машинного перевода.</p><p class="fine"><a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">Данные SDK Google ML Kit ↗</a> · <a href="https://mymemory.translated.net/doc/usagelimits.php" target="_blank" rel="noopener">Лимиты MyMemory ↗</a></p></section>`;
+ const source=$('#translation-source'),status=$('#translation-status'),output=$('#translation-output'),button=$('#translation-submit'),copy=$('#translation-copy'),direction=$('#translation-direction'),mode=$('#translation-mode'),badge=$('#translation-attribution');
+ mode.value=nativeOffline?'offline':'online';
  const cancel=()=>{translationRun++;translationAbort?.abort();translationAbort=null;button.disabled=false;};
- source.oninput=()=>{cancel();output.textContent='';status.textContent='';copy.hidden=true;};
- $('#translation-clear').onclick=()=>{cancel();source.value='';output.textContent='';status.textContent='';copy.hidden=true;source.focus();};
+ const clearResult=()=>{cancel();output.textContent='';status.textContent='';copy.hidden=true;badge.hidden=true;};
+ const settings=()=>{clearResult();const ru=direction.value==='ru',offline=mode.value==='offline';
+  $('#translation-source-label').textContent=ru?'Текст на русском':'Текст на английском';source.placeholder=ru?'Вставь русский текст…':'Вставь английский текст…';
+  button.textContent=ru?'Перевести на английский':'Перевести на русский';const target=ru?'Перевод на английский':'Перевод на русский';$('#translation-target-label').textContent=target;output.setAttribute('aria-label',target);
+  source.maxLength=offline?5000:1500;
+  $('#translation-limit').textContent=offline?'До 5000 символов. Офлайн-режим не переключается на онлайн автоматически.':'До 1500 символов. Большой текст делится на части; у сервиса есть суточный лимит.';
+  $('#translation-info').textContent=offline?'Перевод на устройстве: текст не отправляется сервису перевода. Пакет скачивается с серверов Google по отдельной кнопке. SDK может отправлять служебную диагностику согласно правилам Google.':'MyMemory: текст отправляется стороннему сервису только по кнопке «Перевести». Не вводи пароли и личные данные. '+(nativeOffline?'':'В этой версии Windows, iPhone и веб-приложения полный перевод без интернета недоступен.');
+  $('#translation-model').hidden=!nativeOffline||!offline;
+ };
+ direction.onchange=settings;mode.onchange=settings;
+ $('#translation-swap').onclick=()=>{const previous=output.textContent;direction.value=direction.value==='en'?'ru':'en';if(previous)source.value=previous;settings();};
+ source.oninput=clearResult;
+ $('#translation-clear').onclick=()=>{source.value='';clearResult();source.focus();};
+ if(nativeOffline){
+  const modelStatus=$('#translation-model-status'),download=$('#translation-download'),del=$('#translation-delete-model');
+  const call=(action)=>nativeRequest(id=>window.OporaFiles.offlineTranslation(id,action,'','en',$('#translation-cellular')?.checked===true),null,action==='download'?600000:60000);
+  const show=p=>{if(!modelStatus.isConnected)return;modelStatus.textContent=p.busy?'Операция с пакетом выполняется. При загрузке без разрешения мобильной сети нужен Wi-Fi.':p.ready?'Пакет готов. Можно переводить без интернета в обе стороны.':'Пакет ещё не скачан. Подключись к интернету и нажми «Скачать пакет».';download.disabled=!!p.busy;del.disabled=!!p.busy||!p.ready;if(p.busy)setTimeout(()=>{if(modelStatus.isConnected)refresh();},3000);};
+  const refresh=async()=>{try{show(await call('status'));}catch(e){if(modelStatus.isConnected)modelStatus.textContent=e.message;}};
+  $('#translation-model-refresh').onclick=refresh;
+  download.onclick=async()=>{download.disabled=true;del.disabled=true;modelStatus.textContent='Загрузка пакета… Не закрывай приложение. Без разрешения мобильной сети требуется Wi-Fi.';try{show(await call('download'));}catch(e){if(modelStatus.isConnected){modelStatus.textContent=e.message;download.disabled=false;}}};
+  del.onclick=async()=>{if(!confirm('Удалить языковой пакет? Для офлайн-перевода понадобится скачать его снова. Заметки ДЗ останутся.'))return;clearResult();download.disabled=true;del.disabled=true;try{show(await call('delete'));}catch(e){if(modelStatus.isConnected){modelStatus.textContent=e.message;download.disabled=false;del.disabled=false;}}};
+  refresh();
+ }
  $('#translation-form').onsubmit=async e=>{
-  e.preventDefault();const text=source.value.trim();if(!text){status.textContent='Вставь текст на английском.';return;}
-  if(text.length>1500){status.textContent='Сократи текст до 1500 символов.';return;}
-  cancel();const run=translationRun;translationAbort=new AbortController();const controller=translationAbort;
-  const timeout=setTimeout(()=>controller.abort(),60000);button.disabled=true;output.textContent='';copy.hidden=true;const chunks=translationChunks(text);let result=[];
-  try{for(let i=0;i<chunks.length;i++){if(run!==translationRun)return;status.textContent=`Перевод: часть ${i+1} из ${chunks.length}…`;result.push(await requestTranslation(chunks[i],controller.signal));}
-   if(run!==translationRun)return;output.textContent=result.join(' ');status.textContent='Готово. Проверь имена, термины и смысл.';copy.hidden=false;
-  }catch(err){if(run!==translationRun)return;status.textContent=err.name==='AbortError'?'Время ожидания истекло. Проверь интернет и попробуй снова.':err.message||'Перевод недоступен. Проверь интернет.';output.textContent='';}
+  e.preventDefault();const text=source.value.trim(),from=direction.value,offline=mode.value==='offline';
+  if(!text){status.textContent=from==='ru'?'Вставь текст на русском.':'Вставь текст на английском.';return;}
+  if(text.length>(offline?5000:1500)){status.textContent='Сократи текст до '+(offline?5000:1500)+' символов.';return;}
+  if(from==='en'&&/[А-Яа-яЁё]/.test(text)&&!/[a-zA-Z]/.test(text)){status.textContent='Похоже, текст на русском. Выбери «Русский → английский» или нажми ⇄.';return;}
+  if(from==='ru'&&/[a-zA-Z]/.test(text)&&!/[А-Яа-яЁё]/.test(text)){status.textContent='Похоже, текст на английском. Выбери «Английский → русский» или нажми ⇄.';return;}
+  clearResult();const run=translationRun;translationAbort=new AbortController();const controller=translationAbort;
+  const timeout=setTimeout(()=>controller.abort(),60000);button.disabled=true;
+  try{
+   let value;
+   if(offline){status.textContent='Перевожу на устройстве…';const p=await nativeRequest(id=>window.OporaFiles.offlineTranslation(id,'translate',text,from,false),controller.signal);if(typeof p.translatedText!=='string'||!p.translatedText.trim())throw Error('Модель вернула пустой ответ.');value=p.translatedText;}
+   else{const chunks=translationChunks(text),result=[];for(let i=0;i<chunks.length;i++){if(run!==translationRun)return;status.textContent=`Перевод: часть ${i+1} из ${chunks.length}…`;result.push(await requestTranslation(chunks[i],controller.signal,from));}value=result.join(' ');}
+   if(run!==translationRun)return;output.textContent=value;status.textContent=offline?'Готово · без интернета. Проверь смысл перевода.':'Готово · MyMemory через интернет. Проверь смысл перевода.';copy.hidden=false;badge.hidden=!offline;
+  }catch(err){if(run!==translationRun)return;status.textContent=err.name==='AbortError'?'Время ожидания истекло. Попробуй короткий текст и проверь выбранный режим.':err.message||'Не удалось перевести.';output.textContent='';}
   finally{clearTimeout(timeout);if(run===translationRun){button.disabled=false;translationAbort=null;}}
  };
  copy.onclick=async()=>{try{await navigator.clipboard.writeText(output.textContent);status.textContent='Перевод скопирован.';}catch(e){status.textContent='Выдели перевод и скопируй через меню устройства.';}};
+ settings();
 }
 const subjectModels={
  scale:{name:'География · Масштаб',fields:[['cm','Расстояние на карте, см','3.5'],['scale','Знаменатель масштаба 1:…','200000']],solve:v=>{const cm=v('cm'),s=v('scale');if(cm<0||s<=0)throw Error('Расстояние ≥ 0; масштаб > 0.');return{answer:approx(cm*s/100000)+' км',steps:[`1 см на карте = ${approx(s/100000)} км.`,`Умножаем ${cm} × ${s}, получаем сантиметры на местности.`,`Переводим в километры: делим на 100 000.`]};}},
@@ -77,12 +112,12 @@ openCard=function(id){v07OpenCard(id);const c=DB.cards.find(x=>x.id===id);if(!c|
  if(c.solved?.length){const block=document.createElement('section');block.className='teacher-questions';block.innerHTML='<h3>Потренируйся</h3>'+c.solved.map(({q,a,steps})=>`<p>${esc(q)}</p><details><summary>Показать решение</summary><p><strong>${esc(a)}</strong></p><ol>${steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></details>`).join('');if(c.subject==='Английский язык')block.innerHTML+='<button data-view="translate" type="button" class="close-and-go">Перевести свой текст →</button>';else block.innerHTML+='<button data-view="subject-practice" type="button" class="close-and-go">Решить свой числовой пример →</button>';block.querySelector('.close-and-go').onclick=()=>$('#knowledge-dialog').close();$('.dialog-foot').before(block);}
 };
 const v07RenderAbout=renderAbout;
-renderAbout=function(){v07RenderAbout();$('#view').insertAdjacentHTML('afterbegin',`<section class="panel"><h2>Обновление 0.8.1</h2><p>${DB.cards.length} материалов · ${DB.cards.filter(c=>c.kind==='essay').length} тем сочинений · 10 расширенных пересказов · ${DB.cards.reduce((n,c)=>n+(c.qa?.length||0),0)} вопросов с ответами. Онлайн-перевод EN → RU и 6 офлайн-моделей по предметам. ДЗ: локальные заметки, сроки, напоминания и экспорт в календарь.</p></section><section class="panel"><h2>Память и кеш</h2><p>Учебная база встроена в приложение. Размер установленного приложения, оперативная память, данные и кеш — разные показатели. После первой загрузки кеш растёт, но постоянный неограниченный рост требует проверки.</p><p id="cache-estimate" class="fine">Оценка хранилища недоступна.</p><button id="cache-clean" type="button">Очистить лишний кеш</button><p id="cache-clean-status" role="status"></p><p class="fine">Android APK: очищается HTTP-кеш WebView. Веб/PWA: удаляются только старые кеши «Опоры»; текущая офлайн-копия сохраняется. Избранное и тема не удаляются. Кнопка не может очистить весь системный кеш Android или память других приложений.</p></section>`);
+renderAbout=function(){v07RenderAbout();$('#view').insertAdjacentHTML('afterbegin',`<section class="panel"><h2>Обновление 0.9.0</h2><p>${DB.cards.length} материалов · ${DB.cards.filter(c=>c.kind==='essay').length} тем сочинений · 10 расширенных пересказов · ${DB.cards.reduce((n,c)=>n+(c.qa?.length||0),0)} вопросов с ответами. Перевод EN ↔ RU: Android — офлайн после скачивания пакета; Windows и iPhone PWA — онлайн. Также 6 офлайн-моделей по предметам. ДЗ: локальные заметки, сроки, напоминания и экспорт в календарь.</p></section><section class="panel"><h2>Память и кеш</h2><p>Учебная база встроена в приложение. Размер установленного приложения, оперативная память, данные и кеш — разные показатели. После первой загрузки кеш растёт, но постоянный неограниченный рост требует проверки.</p><p id="cache-estimate" class="fine">Оценка хранилища недоступна.</p><button id="cache-clean" type="button">Очистить лишний кеш</button><p id="cache-clean-status" role="status"></p><p class="fine">Android APK: очищается HTTP-кеш WebView. Веб/PWA: удаляются только старые кеши «Опоры»; текущая офлайн-копия сохраняется. Избранное и тема не удаляются. Кнопка не может очистить весь системный кеш Android или память других приложений.</p></section>`);
  const label=$('#cache-estimate');if(navigator.storage?.estimate)navigator.storage.estimate().then(s=>{if(label.isConnected)label.textContent=`Данные этого сайта: около ${((s.usage||0)/1048576).toFixed(1)} МиБ. Оценка браузера, не точный размер кеша.`;}).catch(()=>{});
- $('#cache-clean').onclick=async()=>{const out=$('#cache-clean-status');try{if(window.OporaFiles?.clearHttpCache){window.OporaFiles.clearHttpCache();out.textContent='Запрошена очистка HTTP-кеша Android. Избранное сохранено.';}else if(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1'){let n=0;for(const key of await caches.keys())if(/^opora-/.test(key)&&key!=='opora-0.8.1'){await caches.delete(key);n++;}out.textContent=n?`Удалено старых кешей: ${n}. Офлайн-копия сохранена.`:'Старых кешей нет. Текущая офлайн-копия сохранена.';}else out.textContent='Для локального HTML отдельного офлайн-кеша нет. Настройки и избранное не изменены.';}catch(e){out.textContent='Очистка недоступна в этом окружении. Избранное не изменено.';}};
+ $('#cache-clean').onclick=async()=>{const out=$('#cache-clean-status');try{if(window.OporaFiles?.clearHttpCache){window.OporaFiles.clearHttpCache();out.textContent='Запрошена очистка HTTP-кеша Android. Избранное сохранено.';}else if(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1'){let n=0;for(const key of await caches.keys())if(/^opora-/.test(key)&&key!=='opora-0.9.0'){await caches.delete(key);n++;}out.textContent=n?`Удалено старых кешей: ${n}. Офлайн-копия сохранена.`:'Старых кешей нет. Текущая офлайн-копия сохранена.';}else out.textContent='Для локального HTML отдельного офлайн-кеша нет. Настройки и избранное не изменены.';}catch(e){out.textContent='Очистка недоступна в этом окружении. Избранное не изменено.';}};
 };
 window.OporaV07={translationChunks,decodeTranslation,subjectModels};
 const v07Subjects=renderSubjects;
-renderSubjects=function(){v07Subjects();$('.subject-search').insertAdjacentHTML('afterend','<div class="actions quick-learning"><button type="button" data-view="translate">Aa · Перевод EN → RU</button><button type="button" data-view="subject-practice">Задачи по предметам →</button></div>');};
+renderSubjects=function(){v07Subjects();$('.subject-search').insertAdjacentHTML('afterend','<div class="actions quick-learning"><button type="button" data-view="translate">Aa · Перевод EN ↔ RU</button><button type="button" data-view="subject-practice">Задачи по предметам →</button></div>');};
 const v07Library=renderLibrary;
-renderLibrary=function(){v07Library();if(activeView==='subject'&&chosenSubject==='Английский язык')$('.subject-actions')?.insertAdjacentHTML('beforeend','<button type="button" data-view="translate">Перевод EN → RU</button>');};
+renderLibrary=function(){v07Library();if(activeView==='subject'&&chosenSubject==='Английский язык')$('.subject-actions')?.insertAdjacentHTML('beforeend','<button type="button" data-view="translate">Перевод EN ↔ RU</button>');};

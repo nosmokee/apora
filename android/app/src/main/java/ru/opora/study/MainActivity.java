@@ -30,11 +30,13 @@ import java.io.ByteArrayInputStream;
 
 public class MainActivity extends Activity {
  private WebView web;
+ private OfflineTranslation offline;
  private final ExecutorService translator=Executors.newSingleThreadExecutor();
  private String pendingSVG;
  private static final String HOME="file:///android_asset/index.html";
  @Override public void onCreate(Bundle state){
   super.onCreate(state);
+  offline=new OfflineTranslation((id,result)->translationReply(id,result.toString()));
   getWindow().setStatusBarColor(Color.rgb(24,25,22));
   getWindow().setNavigationBarColor(Color.rgb(24,25,22));
   final FrameLayout root=new FrameLayout(this);
@@ -77,20 +79,38 @@ public class MainActivity extends Activity {
  @Override public void onBackPressed(){
   web.evaluateJavascript("(function(){var d=document.getElementById('knowledge-dialog');if(d&&d.open){d.close();return true;}if(typeof activeView!=='undefined'&&activeView!=='subjects'){setView('subjects');return true;}return false;})()",new ValueCallback<String>(){public void onReceiveValue(String value){if(!"true".equals(value))finish();}});
  }
+ private void translationReply(final String id,final String payload){
+  runOnUiThread(()->{if(web!=null)web.evaluateJavascript("window.oporaTranslationResult&&window.oporaTranslationResult("+JSONObject.quote(id)+","+payload+");",null);});
+ }
+ private boolean validId(String id){return id!=null&&id.matches("[0-9]{1,10}");}
  public class ExportBridge {
+  @JavascriptInterface public void offlineTranslation(final String id,final String action,final String text,final String from,final boolean cellular){
+   if(!validId(id))return;
+   if(!("status".equals(action)||"download".equals(action)||"delete".equals(action)||"translate".equals(action)))return;
+   if("translate".equals(action)&&(text==null||text.length()>5000||!("en".equals(from)||"ru".equals(from))))return;
+   runOnUiThread(()->{if(web==null)return;
+    if("status".equals(action))offline.status(id);
+    else if("download".equals(action))offline.download(id,cellular);
+    else if("delete".equals(action))offline.delete(id);
+    else offline.translate(id,text,from);
+   });
+  }
+
   @JavascriptInterface public void clearHttpCache(){
    runOnUiThread(new Runnable(){public void run(){if(web!=null)web.clearCache(true);}});
   }
   // Only this fixed public translation endpoint is reachable through the bridge.
   // Never accept a URL from JavaScript; no keys, cookies or translation history.
-  @JavascriptInterface public void translateEnglish(final String id,final String text){
+  @JavascriptInterface public void translateEnglish(final String id,final String text){translateOnline(id,text,"en");}
+  @JavascriptInterface public void translateOnline(final String id,final String text,final String from){
+   if(!("en".equals(from)||"ru".equals(from)))return;
    if(id==null||!id.matches("[0-9]{1,10}")||text==null)return;
    try{if(text.getBytes("UTF-8").length>500)return;}catch(Exception ignored){return;}
    if(translator.isShutdown())return;
    translator.execute(new Runnable(){public void run(){
     HttpsURLConnection connection=null;String payload;
     try{
-     URL url=new URL("https://api.mymemory.translated.net/get?langpair=en%7Cru&q="+URLEncoder.encode(text,"UTF-8"));
+     URL url=new URL("https://api.mymemory.translated.net/get?langpair="+("ru".equals(from)?"ru%7Cen":"en%7Cru")+"&q="+URLEncoder.encode(text,"UTF-8"));
      connection=(HttpsURLConnection)url.openConnection();connection.setInstanceFollowRedirects(false);
      connection.setConnectTimeout(8000);connection.setReadTimeout(10000);connection.setUseCaches(false);
      connection.setRequestProperty("Accept","application/json");
@@ -131,5 +151,5 @@ public class MainActivity extends Activity {
    }
   }
  }
- @Override protected void onDestroy(){translator.shutdownNow();if(web!=null){web.destroy();web=null;}super.onDestroy();}
+ @Override protected void onDestroy(){translator.shutdownNow();if(offline!=null)offline.close();if(web!=null){web.destroy();web=null;}super.onDestroy();}
 }

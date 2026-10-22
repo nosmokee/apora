@@ -6,7 +6,7 @@ app.on('browser-window-created',(_event,win)=>{
  win.webContents.once('did-finish-load',async()=>{
   try{
    const result=await win.webContents.executeJavaScript(`(function(){
-    if(DB.version!=='0.8.1')throw Error('Wrong version');
+    if(DB.version!=='0.9.0')throw Error('Wrong version');
     if(document.querySelector('.nav [data-view]:last-child').dataset.view!=='homework')throw Error('Desktop order');
     setView('about');if(!document.getElementById('view').textContent.includes('Сделано NoSmoke'))throw Error('Credit');
     setView('homework');document.getElementById('hw-title').value='CI smoke test';
