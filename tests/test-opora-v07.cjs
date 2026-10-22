@@ -3,7 +3,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=r
  const browser=await chromium.launch({executablePath:'/usr/local/bin/chromium',args:['--no-sandbox']});
  const ctx=await browser.newContext({viewport:{width:1280,height:900}});const p=await ctx.newPage();let checks=0;const errors=[];p.on('pageerror',e=>errors.push(e.message));const ok=(v,m)=>{assert.ok(v,m);checks++;};
  const app=path.resolve(__dirname,'../index.html');await p.goto('file://'+app);await p.waitForSelector('#subject-search');
- ok(await p.evaluate(()=>DB.version==='0.7'&&DB.cards.length===268),'content version/count');
+ ok(await p.evaluate(()=>DB.version==='0.8'&&DB.cards.length===268),'content version/count');
  ok(await p.evaluate(()=>DB.cards.filter(c=>c.kind==='essay').length===36),'36 essays');
  ok(await p.evaluate(()=>DB.cards.filter(c=>c.kind==='summary').every(c=>c.sections[0].paragraphs.join(' ').length>2000&&c.qa.length===4)),'all retellings expanded');
  for(const id of ['work-onegin','work-captain','work-hero','work-souls','work-revizor','work-war','work-crime','work-cherry','work-fathers','work-master','author-pushkin','author-lermontov','author-gogol','author-tolstoy','author-dostoevsky','author-turgenev','author-chekhov','author-bulgakov']){
