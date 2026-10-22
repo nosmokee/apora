@@ -46,3 +46,8 @@ button,a,summary,[role="button"]{-webkit-tap-highlight-color:transparent}
 html[data-theme=dark] .theme-icons .sun{opacity:1;transform:rotate(0) scale(1)}
 html[data-theme=dark] .theme-icons .moon{opacity:0;transform:rotate(55deg) scale(.7)}
 @media(prefers-reduced-motion:reduce){.theme-icons svg{transition:none}}
+
+/* Offline exam bank: keep long conditions and foreign-language text within phone width. */
+.exam-task{padding:1.25rem 0;border-top:1px solid var(--line);overflow-wrap:anywhere}.exam-task h3{font-family:inherit;font-size:1.05rem;line-height:1.55}.exam-task details{margin:.8rem 0}.exam-task li{margin:.65rem 0;line-height:1.65}#offline-input{scroll-margin-top:1rem}#exam-condition{width:100%;box-sizing:border-box;resize:vertical}#exam-input-error{color:var(--accent);overflow-wrap:anywhere}#exam-template,#exam-subject{max-width:100%}
+
+#exam-condition{padding:12px;font:inherit;line-height:1.6;background:var(--surface);color:var(--text);border:1px solid var(--control);border-radius:var(--radius)}#exam-condition:focus-visible{outline:2px solid var(--accent);outline-offset:4px}#exam-input-form{margin-top:16px}
