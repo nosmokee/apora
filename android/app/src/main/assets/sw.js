@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='opora-1.0.0-blue-icon1';
+const CACHE='opora-1.0.0-text-spacing1';
 // Store the large self-contained HTML once, not both './' and './index.html'.
 const ASSETS=['./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS.map(path=>new Request(path,{cache:'reload'})))).then(()=>self.skipWaiting())));

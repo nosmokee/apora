@@ -19,5 +19,5 @@ assert '<text' not in (root/'web-source/assets/branding/opora-blue.svg').read_te
 config=json.loads((root/'windows/package.json').read_text());assert config['build']['win']['icon']=='app/icon.ico' and config['build']['win']['signAndEditExecutable'] is True
 manifest=json.loads((root/'web-source/manifest.webmanifest').read_text());assert all(i['src'].endswith('?v=blue1') for i in manifest['icons'])
 assert 'icon:path.join(__dirname,\'icon.ico\')' in (root/'windows/app/main.cjs').read_text()
-assert 'opora-1.0.0-blue-icon1' in (root/'web-source/sw.js').read_text()
+assert 'opora-1.0.0-text-spacing1' in (root/'web-source/sw.js').read_text()
 print('ICON_ASSETS_OK: shared PWA images, Android legacy/adaptive, outlined glyph, seven-size Windows ICO')

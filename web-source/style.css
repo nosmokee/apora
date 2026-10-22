@@ -72,3 +72,23 @@ html[data-theme=dark] .theme-icons .moon{opacity:0;transform:rotate(55deg) scale
 }
 
 .hw-toolbar{margin-block-end:16px}
+
+/* Consistent reading-to-action rhythm; compact navigation/keypads keep their own grids. */
+:where(.panel,.dialog-body,.dialog-section,.topic-workbench) > :where(p,ul,ol,.fine) + :where(button,.actions,form,details){margin-block-start:16px}
+:where(.panel,.dialog-body,.dialog-section,.topic-workbench) > :where(button,.actions,form) + :where(p,h2,h3,details){margin-block-start:16px}
+:where(.panel,.dialog-body,.dialog-section,.topic-workbench) > :where(button,.actions) + :where(button,.actions){margin-block-start:12px}
+:where(.panel,.dialog-body) :where(form,.actions) + :where([role="status"],[role="alert"]):not(:empty){margin-block-start:16px}
+:where(.panel,.dialog-body) :where([role="status"],[role="alert"]):empty{margin-block:0}
+.translator-panel #translation-status:not(:empty){margin-block:20px}
+.translator-panel #translation-target-label{margin-block-start:24px}
+#translation-model-status:not(:empty){margin-block-start:16px}
+.translation-format-tools{display:grid;gap:16px;margin-block:20px 24px;padding-block:16px;border-block:1px solid var(--line)}
+.translation-format-tools>button{justify-self:start;max-width:100%;white-space:normal}
+.translation-format-tools>label{display:flex;align-items:flex-start;gap:10px;line-height:1.5}
+.translation-format-tools input{flex:0 0 auto;margin-block-start:5px}
+.translation-format-tools p{margin:0}
+#translation-copy:not([hidden]){margin-block:8px 16px}
+.panel :where(.actions,.quick-learning,.subject-actions)+:where(p,h2,h3):not(:empty){margin-block-start:16px}
+:where(.panel,#dialog-body,.topic-workbench) > :where(button,.actions,form) + p:empty + :where(p,h2,h3){margin-block-start:16px}
+#translation-model label{display:flex;align-items:flex-start;gap:10px;line-height:1.5}
+#translation-model input[type="checkbox"],.translation-format-tools input[type="checkbox"]{width:20px;height:20px;min-height:20px;padding:0;flex:0 0 20px;accent-color:var(--accent);margin:2px 0 0}

@@ -10,15 +10,40 @@ setView=function(v){
  $('#page-intro').textContent=v==='translate'?'Английский ↔ русский':'Числовые модели с объяснением. Работают без интернета.';
  if(v==='translate')renderTranslator();else renderSubjectPractice();window.scrollTo(0,0);
 };
+// Preserve paragraphs and prefer complete sentences; the byte limit belongs to MyMemory.
 function translationChunks(text,maxBytes=450){
- const out=[];let chunk='';const enc=new TextEncoder();
- // Prefer word boundaries; split a single oversized token by Unicode code point.
- for(const word of (String(text).match(/\s+|\S+\s*/gu)||[])){
-  if(enc.encode(chunk+word).length<=maxBytes){chunk+=word;continue;}
-  if(chunk){out.push(chunk);chunk='';}
-  for(const ch of word){if(enc.encode(chunk+ch).length>maxBytes){out.push(chunk);chunk='';}chunk+=ch;}
+ const out=[],enc=new TextEncoder();let chunk='';
+ const segments=typeof Intl.Segmenter==='function'?[...new Intl.Segmenter(undefined,{granularity:'sentence'}).segment(String(text))].map(x=>x.segment):String(text).match(/[^.!?]+[.!?]*\s*|[.!?]+\s*/gu)||[];
+ const push=()=>{if(chunk){out.push(chunk);chunk='';}};
+ for(const sentence of segments){
+  if(enc.encode(sentence).length<=maxBytes){if(enc.encode(chunk+sentence).length>maxBytes)push();chunk+=sentence;continue;}
+  push();
+  for(const word of sentence.match(/\s+|\S+\s*/gu)||[]){
+   if(enc.encode(chunk+word).length<=maxBytes){chunk+=word;continue;}
+   push();for(const ch of word){if(enc.encode(chunk+ch).length>maxBytes)push();chunk+=ch;}
+  }
  }
- if(chunk)out.push(chunk);return out;
+ push();return out;
+}
+function translationPlan(text,offline=false){
+ const plan=[];
+ for(const part of String(text).replace(/\r\n?/g,'\n').split(/(\n+)/u)){
+  if(!part)continue;
+  if(/^\n+$/u.test(part)){plan.push({separator:part});continue;}
+  const chunks=offline?[part]:translationChunks(part);
+  for(const chunk of chunks){
+   const lead=chunk.match(/^\s*/u)[0],tail=chunk.match(/\s*$/u)[0],body=chunk.trim();
+   if(!body){plan.push({separator:chunk});continue;}
+   if(lead)plan.push({separator:lead});
+   plan.push({text:body});if(tail)plan.push({separator:tail});
+  }
+ }
+ return plan;
+}
+// Typography only: no invented semantic commas, sentence boundaries or grammar.
+function formatTranslationText(text){
+ const protectedPattern=/(https?:\/\/[^\s]+|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:[a-z0-9-]+\.)+(?:com|org|net|ru|io|рф|co|uk)\b|\b\d+(?:[.,:]\d+)+\b|\b(?:Mr|Mrs|Ms|Dr|Prof)\.)/giu;
+ return String(text).replace(/\r\n?/g,'\n').split(protectedPattern).map((part,i)=>i%2?part:part.split('\n').map(line=>line.replace(/[ \t]+/g,' ').replace(/[ \t]+([,.;:!?])/gu,'$1').replace(/([,;:!?])(?=[\p{L}])/gu,'$1 ').replace(/(\p{Ll}{2,})\.(?=\p{Lu})/gu,'$1. ')).join('\n')).join('').split('\n').map(line=>line.trim()).join('\n');
 }
 const nativeTranslations=new Map();let nativeSequence=0;
 window.oporaTranslationResult=function(id,payload){const request=nativeTranslations.get(id);if(!request)return;nativeTranslations.delete(id);clearTimeout(request.timer);payload.error?request.reject(Error(payload.error)):request.resolve(payload);};
@@ -47,11 +72,13 @@ async function requestTranslation(chunk,signal,from='en'){
 }
 function renderTranslator(){
  const nativeOffline=typeof window.OporaFiles?.offlineTranslation==='function';
- $('#view').innerHTML=`<section class="panel translator-panel"><form id="translation-form"><label for="translation-direction">Направление перевода</label><select id="translation-direction"><option value="en">Английский → русский</option><option value="ru">Русский → английский</option></select><button type="button" id="translation-swap">⇄ Поменять языки</button><label for="translation-mode">Режим</label><select id="translation-mode"><option value="offline" ${nativeOffline?'':'disabled'}>Без интернета · Android</option><option value="online">Через интернет · MyMemory</option></select><p id="translation-info" class="fine"></p><section id="translation-model" ${nativeOffline?'':'hidden'}><p>Языковой пакет Google ML Kit: около 30 МБ. Один раз скачай через интернет, затем переводи в авиарежиме. Пакет занимает место в данных приложения, это не растущий HTTP-кеш.</p><label><input id="translation-cellular" type="checkbox"> Разрешить загрузку через мобильную сеть</label><div class="actions"><button type="button" id="translation-download">Скачать пакет</button><button type="button" id="translation-model-refresh">Проверить пакет</button><button type="button" id="translation-delete-model">Удалить пакет</button></div><p id="translation-model-status" role="status" aria-live="polite"></p></section><label id="translation-source-label" for="translation-source">Текст на английском</label><textarea id="translation-source" rows="7" maxlength="1500" placeholder="Вставь английский текст…" required></textarea><p class="fine" id="translation-limit"></p><div class="actions"><button class="primary" id="translation-submit" type="submit">Перевести на русский</button><button id="translation-clear" type="button">Очистить</button></div></form><p id="translation-status" role="status" aria-live="polite"></p><h2 id="translation-target-label">Перевод на русский</h2><div id="translation-output" class="translation-output" tabindex="0" aria-label="Перевод на русский"></div><p id="translation-attribution" hidden><a href="https://translate.google.com/" target="_blank" rel="noopener">powered by Google Translate</a> · автоматический перевод на устройстве</p><button id="translation-copy" type="button" hidden>Копировать перевод</button><p class="fine">Исходный текст и перевод не сохраняются в истории приложения. Машинный перевод может ошибаться: проверяй смысл, имена и термины. Google не предоставляет гарантий точности или надёжности машинного перевода.</p><p class="fine"><a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">Данные SDK Google ML Kit ↗</a> · <a href="https://mymemory.translated.net/doc/usagelimits.php" target="_blank" rel="noopener">Лимиты MyMemory ↗</a></p></section>`;
+ $('#view').innerHTML=`<section class="panel translator-panel"><form id="translation-form"><label for="translation-direction">Направление перевода</label><select id="translation-direction"><option value="en">Английский → русский</option><option value="ru">Русский → английский</option></select><button type="button" id="translation-swap">⇄ Поменять языки</button><label for="translation-mode">Режим</label><select id="translation-mode"><option value="offline" ${nativeOffline?'':'disabled'}>Без интернета · Android</option><option value="online">Через интернет · MyMemory</option></select><p id="translation-info" class="fine"></p><section id="translation-model" ${nativeOffline?'':'hidden'}><p>Языковой пакет Google ML Kit: около 30 МБ. Один раз скачай через интернет, затем переводи в авиарежиме. Пакет занимает место в данных приложения, это не растущий HTTP-кеш.</p><label><input id="translation-cellular" type="checkbox"> Разрешить загрузку через мобильную сеть</label><div class="actions"><button type="button" id="translation-download">Скачать пакет</button><button type="button" id="translation-model-refresh">Проверить пакет</button><button type="button" id="translation-delete-model">Удалить пакет</button></div><p id="translation-model-status" role="status" aria-live="polite"></p></section><label id="translation-source-label" for="translation-source">Текст на английском</label><textarea id="translation-source" rows="7" maxlength="1500" placeholder="Вставь английский текст…" required></textarea><p class="fine" id="translation-limit"></p><div class="translation-format-tools"><button type="button" id="translation-format-source">Исправить оформление</button><label for="translation-auto-format"><input type="checkbox" id="translation-auto-format" checked> Исправлять пробелы у знаков в переводе</label><p class="fine">Оформление работает без интернета: убирает лишние пробелы, исправляет пробелы у запятых и других знаков. Абзацы сохраняются. Смысловые запятые, пропущенные точки и грамматику автоматически не определяет.</p></div><div class="actions"><button class="primary" id="translation-submit" type="submit">Перевести на русский</button><button id="translation-clear" type="button">Очистить</button></div></form><p id="translation-status" role="status" aria-live="polite"></p><h2 id="translation-target-label">Перевод на русский</h2><div id="translation-output" class="translation-output" tabindex="0" aria-label="Перевод на русский"></div><p id="translation-attribution" hidden><a href="https://translate.google.com/" target="_blank" rel="noopener">powered by Google Translate</a> · автоматический перевод на устройстве</p><button id="translation-copy" type="button" hidden>Копировать перевод</button><p class="fine">Исходный текст и перевод не сохраняются в истории приложения. Машинный перевод может ошибаться: проверяй смысл, имена и термины. Google не предоставляет гарантий точности или надёжности машинного перевода.</p><p class="fine"><a href="https://developers.google.com/ml-kit/android-data-disclosure" target="_blank" rel="noopener">Данные SDK Google ML Kit ↗</a> · <a href="https://mymemory.translated.net/doc/usagelimits.php" target="_blank" rel="noopener">Лимиты MyMemory ↗</a></p></section>`;
  const source=$('#translation-source'),status=$('#translation-status'),output=$('#translation-output'),button=$('#translation-submit'),copy=$('#translation-copy'),direction=$('#translation-direction'),mode=$('#translation-mode'),badge=$('#translation-attribution');
  mode.value=nativeOffline?'offline':'online';
+ let rawTranslation='';const formatToggle=$('#translation-auto-format');
+ formatToggle.onchange=()=>{if(rawTranslation)output.textContent=formatToggle.checked?formatTranslationText(rawTranslation):rawTranslation;};
  const cancel=()=>{translationRun++;translationAbort?.abort();translationAbort=null;button.disabled=false;};
- const clearResult=()=>{cancel();output.textContent='';status.textContent='';copy.hidden=true;badge.hidden=true;};
+ const clearResult=()=>{cancel();rawTranslation='';output.textContent='';status.textContent='';copy.hidden=true;badge.hidden=true;};
  const settings=()=>{clearResult();const ru=direction.value==='ru',offline=mode.value==='offline';
   $('#translation-source-label').textContent=ru?'Текст на русском':'Текст на английском';source.placeholder=ru?'Вставь русский текст…':'Вставь английский текст…';
   button.textContent=ru?'Перевести на английский':'Перевести на русский';const target=ru?'Перевод на английский':'Перевод на русский';$('#translation-target-label').textContent=target;output.setAttribute('aria-label',target);
@@ -63,6 +90,7 @@ function renderTranslator(){
  direction.onchange=settings;mode.onchange=settings;
  $('#translation-swap').onclick=()=>{const previous=output.textContent;direction.value=direction.value==='en'?'ru':'en';if(previous)source.value=previous;settings();};
  source.oninput=clearResult;
+ $('#translation-format-source').onclick=()=>{const before=source.value;source.value=formatTranslationText(before);clearResult();status.textContent=before===source.value?'Лишних пробелов у знаков не найдено. Это не проверка грамматики.':'Оформление исправлено на устройстве. Проверь смысл и пунктуацию.';};
  $('#translation-clear').onclick=()=>{source.value='';clearResult();source.focus();};
  if(nativeOffline){
   const modelStatus=$('#translation-model-status'),download=$('#translation-download'),del=$('#translation-delete-model');
@@ -83,10 +111,16 @@ function renderTranslator(){
   clearResult();const run=translationRun;translationAbort=new AbortController();const controller=translationAbort;
   const timeout=setTimeout(()=>controller.abort(),60000);button.disabled=true;
   try{
-   let value;
-   if(offline){status.textContent='Перевожу на устройстве…';const p=await nativeRequest(id=>window.OporaFiles.offlineTranslation(id,'translate',text,from,false),controller.signal);if(typeof p.translatedText!=='string'||!p.translatedText.trim())throw Error('Модель вернула пустой ответ.');value=p.translatedText;}
-   else{const chunks=translationChunks(text),result=[];for(let i=0;i<chunks.length;i++){if(run!==translationRun)return;status.textContent=`Перевод: часть ${i+1} из ${chunks.length}…`;result.push(await requestTranslation(chunks[i],controller.signal,from));}value=result.join(' ');}
-   if(run!==translationRun)return;output.textContent=value;status.textContent=offline?'Готово · без интернета. Проверь смысл перевода.':'Готово · MyMemory через интернет. Проверь смысл перевода.';copy.hidden=false;badge.hidden=!offline;
+   const plan=translationPlan(text,offline),total=plan.filter(p=>p.text).length,result=[];let done=0;
+   for(const part of plan){
+    if(run!==translationRun)return;
+    if(part.separator!==undefined){result.push(part.separator);continue;}
+    status.textContent=`${offline?'На устройстве':'Перевод'}: часть ${++done} из ${total}…`;
+    if(offline){const p=await nativeRequest(id=>window.OporaFiles.offlineTranslation(id,'translate',part.text,from,false),controller.signal);if(typeof p.translatedText!=='string'||!p.translatedText.trim())throw Error('Модель вернула пустой ответ.');result.push(p.translatedText.trim());}
+    else result.push((await requestTranslation(part.text,controller.signal,from)).trim());
+   }
+   const value=result.join('');
+   if(run!==translationRun)return;rawTranslation=value;output.textContent=formatToggle.checked?formatTranslationText(value):value;status.textContent=offline?'Готово · без интернета. Проверь смысл перевода.':'Готово · MyMemory через интернет. Проверь смысл перевода.';copy.hidden=false;badge.hidden=!offline;
   }catch(err){if(run!==translationRun)return;status.textContent=err.name==='AbortError'?'Время ожидания истекло. Попробуй короткий текст и проверь выбранный режим.':err.message||'Не удалось перевести.';output.textContent='';}
   finally{clearTimeout(timeout);if(run===translationRun){button.disabled=false;translationAbort=null;}}
  };
@@ -114,9 +148,9 @@ openCard=function(id){v07OpenCard(id);const c=DB.cards.find(x=>x.id===id);if(!c|
 const v07RenderAbout=renderAbout;
 renderAbout=function(){v07RenderAbout();$('#view').insertAdjacentHTML('afterbegin',`<section class="panel"><h2>Обновление 1.0.0</h2><p>${DB.cards.length} материалов · ${DB.cards.filter(c=>c.kind==='essay').length} тем сочинений с двумя полными образцами к каждой · 10 расширенных пересказов · ${DB.cards.reduce((n,c)=>n+(c.qa?.length||0),0)} вопросов с ответами. Перевод EN ↔ RU: Android — офлайн после скачивания пакета; Windows и iPhone PWA — онлайн. Также 11 офлайн-моделей по предметам, включая 5 по биологии. Биология: 30 тем, 60 разобранных заданий. ДЗ: локальные заметки, сроки, напоминания и экспорт в календарь.</p></section><section class="panel"><h2>Память и кеш</h2><p>Учебная база встроена в приложение. Размер установленного приложения, оперативная память, данные и кеш — разные показатели. После первой загрузки кеш растёт, но постоянный неограниченный рост требует проверки.</p><p id="cache-estimate" class="fine">Оценка хранилища недоступна.</p><button id="cache-clean" type="button">Очистить лишний кеш</button><p id="cache-clean-status" role="status"></p><p class="fine">Android APK: очищается HTTP-кеш WebView. Веб/PWA: удаляются только старые кеши «Опоры»; текущая офлайн-копия сохраняется. Избранное и тема не удаляются. Кнопка не может очистить весь системный кеш Android или память других приложений.</p></section>`);
  const label=$('#cache-estimate');if(navigator.storage?.estimate)navigator.storage.estimate().then(s=>{if(label.isConnected)label.textContent=`Данные этого сайта: около ${((s.usage||0)/1048576).toFixed(1)} МиБ. Оценка браузера, не точный размер кеша.`;}).catch(()=>{});
- $('#cache-clean').onclick=async()=>{const out=$('#cache-clean-status');try{if(window.OporaFiles?.clearHttpCache){window.OporaFiles.clearHttpCache();out.textContent='Запрошена очистка HTTP-кеша Android. Избранное сохранено.';}else if(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1'){let n=0;for(const key of await caches.keys())if(/^opora-/.test(key)&&key!=='opora-1.0.0-blue-icon1'){await caches.delete(key);n++;}out.textContent=n?`Удалено старых кешей: ${n}. Офлайн-копия сохранена.`:'Старых кешей нет. Текущая офлайн-копия сохранена.';}else out.textContent='Для локального HTML отдельного офлайн-кеша нет. Настройки и избранное не изменены.';}catch(e){out.textContent='Очистка недоступна в этом окружении. Избранное не изменено.';}};
+ $('#cache-clean').onclick=async()=>{const out=$('#cache-clean-status');try{if(window.OporaFiles?.clearHttpCache){window.OporaFiles.clearHttpCache();out.textContent='Запрошена очистка HTTP-кеша Android. Избранное сохранено.';}else if(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1'){let n=0;for(const key of await caches.keys())if(/^opora-/.test(key)&&key!=='opora-1.0.0-text-spacing1'){await caches.delete(key);n++;}out.textContent=n?`Удалено старых кешей: ${n}. Офлайн-копия сохранена.`:'Старых кешей нет. Текущая офлайн-копия сохранена.';}else out.textContent='Для локального HTML отдельного офлайн-кеша нет. Настройки и избранное не изменены.';}catch(e){out.textContent='Очистка недоступна в этом окружении. Избранное не изменено.';}};
 };
-window.OporaV07={translationChunks,decodeTranslation,subjectModels};
+window.OporaV07={translationChunks,translationPlan,formatTranslationText,decodeTranslation,subjectModels};
 const v07Subjects=renderSubjects;
 renderSubjects=function(){v07Subjects();$('.subject-search').insertAdjacentHTML('afterend','<div class="actions quick-learning"><button type="button" data-view="translate">Перевод EN ↔ RU</button><button type="button" data-view="subject-practice">Задачи по предметам →</button></div>');};
 const v07Library=renderLibrary;
