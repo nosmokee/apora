@@ -6,9 +6,9 @@ android {
   // New stable identity: old 0.6 signing key is unavailable. Coexists with 0.6.
   applicationId 'ru.opora.study.next'
   minSdk 26
-  testInstrumentationRunner 'android.test.InstrumentationTestRunner'
+  testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
   targetSdk 35
-  versionCode 10
+  versionCode 11
   versionName '0.9.0'
  }
  signingConfigs {
@@ -30,4 +30,8 @@ android {
  compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
 }
 
-dependencies { implementation 'com.google.mlkit:translate:17.0.3' }
+dependencies {
+ implementation 'com.google.mlkit:translate:17.0.3'
+ androidTestImplementation 'androidx.test:runner:1.6.2'
+ androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}
