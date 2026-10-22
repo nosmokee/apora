@@ -1,4 +1,4 @@
-name: Replace 1.0.0 installers with offline exams
+name: Replace 1.0.0 installers with spacing fixes
 on:
   workflow_dispatch:
 permissions:
@@ -145,6 +145,7 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/exam-deps" --no-audit --no-fund playwright
           cp web-source/index.html index.html
           NODE_PATH="$RUNNER_TEMP/exam-deps/node_modules" node tests/test-offline-exams.cjs
+          NODE_PATH="$RUNNER_TEMP/exam-deps/node_modules" node tests/test-button-spacing.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: offline-exam-test-results

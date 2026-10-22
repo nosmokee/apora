@@ -51,3 +51,24 @@ html[data-theme=dark] .theme-icons .moon{opacity:0;transform:rotate(55deg) scale
 .exam-task{padding:1.25rem 0;border-top:1px solid var(--line);overflow-wrap:anywhere}.exam-task h3{font-family:inherit;font-size:1.05rem;line-height:1.55}.exam-task details{margin:.8rem 0}.exam-task li{margin:.65rem 0;line-height:1.65}#offline-input{scroll-margin-top:1rem}#exam-condition{width:100%;box-sizing:border-box;resize:vertical}#exam-input-error{color:var(--accent);overflow-wrap:anywhere}#exam-template,#exam-subject{max-width:100%}
 
 #exam-condition{padding:12px;font:inherit;line-height:1.6;background:var(--surface);color:var(--text);border:1px solid var(--control);border-radius:var(--radius)}#exam-condition:focus-visible{outline:2px solid var(--accent);outline-offset:4px}#exam-input-form{margin-top:16px}
+
+/* 1.0.0 layout fix: separate controls from fields and preserve gaps on wrapped rows.
+   Never add blanket button margins: navigation, calculator keys and table cells
+   have their own grid spacing. */
+#view .panel > .field,
+#view .panel form > .field{margin-block-end:16px}
+#view > .panel + .panel,
+#view > .panel + .calc-switch{margin-block-start:24px}
+#subject-model{margin-block-end:20px}
+.actions,.quick-learning,.subject-actions,.dialog-foot,.home-bottom,.calc-switch,.map-controls{row-gap:12px;column-gap:12px}
+.actions > button,.quick-learning > button,.subject-actions > button,
+.dialog-foot > button,.home-bottom > button,.calc-switch > button,.map-controls > button{
+ max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;flex-shrink:1
+}
+.actions > .hw-import{max-width:100%;min-width:0}
+@media(min-width:761px) and (max-width:1120px){
+ .filters:not(.single-subject-filter),.filters.scoped-filters{grid-template-columns:minmax(0,1fr) minmax(100px,.7fr)}
+ .filters .search-field{grid-column:1/-1}
+}
+
+.hw-toolbar{margin-block-end:16px}
