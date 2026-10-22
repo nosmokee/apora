@@ -1,4 +1,4 @@
-name: Replace 1.0.0 installers with theme fix
+name: Replace 1.0.0 installers with UI fixes
 on:
   workflow_dispatch:
 permissions:
