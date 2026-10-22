@@ -7,6 +7,11 @@ app.on('browser-window-created',(_event,win)=>{
   try{
    const result=await win.webContents.executeJavaScript(`(function(){
     if(DB.version!=='1.0.0')throw Error('Wrong version');
+    const noMotion=document.createElement('style');noMotion.textContent='.theme-icons svg{transition:none!important}';document.head.append(noMotion);
+    applyTheme('light');if(document.querySelector('.moon path').getTotalLength()<20)throw Error('Moon geometry');
+    if(getComputedStyle(document.querySelector('.moon')).opacity!=='1')throw Error('Moon visibility');
+    document.getElementById('theme-toggle').click();if(document.documentElement.dataset.theme!=='dark')throw Error('Theme toggle');
+    applyTheme('light');
     if(document.querySelector('.nav [data-view]:last-child').dataset.view!=='homework')throw Error('Desktop order');
     setView('about');if(!document.getElementById('view').textContent.includes('Сделано NoSmoke'))throw Error('Credit');
     setView('homework');document.getElementById('hw-title').value='CI smoke test';

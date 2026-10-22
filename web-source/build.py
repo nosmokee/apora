@@ -4,7 +4,7 @@ import json,base64
 p=Path(__file__).resolve().parent
 db=json.loads((p/'library.json').read_text(encoding='utf-8'))
 assert len({c['id'] for c in db['cards']})==len(db['cards'])
-if db['version']=='1.0.0':
+if db['version'].startswith('1.0.'):
  essays=[c for c in db['cards'] if c.get('kind')=='essay']
  bio=[c for c in db['cards'] if c.get('subject')=='Биология']
  assert len(essays)==436 and len({c['title'].casefold() for c in essays})==436

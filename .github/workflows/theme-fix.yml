@@ -1,0 +1,194 @@
+name: Replace 1.0.0 installers with theme fix
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: theme-fix-1.0.0
+  cancel-in-progress: false
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - name: Build canonical HTML
+        shell: bash
+        run: |
+          python web-source/build.py
+          cp web-source/index.html windows/app/index.html
+      - name: Install desktop dependencies
+        working-directory: windows
+        run: npm ci
+      - name: Smoke-test desktop app and homework
+        working-directory: windows
+        run: npm run test:smoke
+      - name: Build Windows portable EXE
+        working-directory: windows
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run build:win
+      - name: Verify executable header and size
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('windows/dist/Opora-1.0.0-Windows-x64.exe')
+          assert p.stat().st_size>20000000
+          with p.open('rb') as f: assert f.read(2)==b'MZ'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: windows/dist/Opora-1.0.0-Windows-x64.exe
+          if-no-files-found: error
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Install Android build tools
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Build canonical HTML
+        run: |
+          python3 web-source/build.py
+          cp web-source/index.html android/app/src/main/assets/index.html
+      - name: Restore signing key to temporary runner storage
+        env:
+          KEYSTORE_B64: ${{ secrets.OPORA_ANDROID_KEYSTORE_B64 }}
+          OPORA_KEYSTORE_PASSWORD: ${{ secrets.OPORA_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64"
+          test -n "$OPORA_KEYSTORE_PASSWORD"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/opora-next.p12"
+          chmod 600 "$RUNNER_TEMP/opora-next.p12"
+      - name: Build signed Android release
+        env:
+          OPORA_KEYSTORE_PATH: ${{ runner.temp }}/opora-next.p12
+          OPORA_KEYSTORE_PASSWORD: ${{ secrets.OPORA_ANDROID_KEYSTORE_PASSWORD }}
+        run: gradle -p android assembleRelease --no-daemon
+      - name: Verify APK signature and package identity
+        env:
+          OPORA_KEYSTORE_PASSWORD: ${{ secrets.OPORA_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          mkdir -p release-files
+          cp android/app/build/outputs/apk/release/app-release.apk release-files/Opora-1.0.0-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs release-files/Opora-1.0.0-Android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging release-files/Opora-1.0.0-Android.apk > "$RUNNER_TEMP/badging.txt"
+          grep "name='ru.opora.study.next'" "$RUNNER_TEMP/badging.txt"
+          grep "versionName='1.0.0'" "$RUNNER_TEMP/badging.txt"
+          keytool -exportcert -rfc -alias opora-next -keystore "$RUNNER_TEMP/opora-next.p12" -storepass:env OPORA_KEYSTORE_PASSWORD -file release-files/Android-signing-certificate.pem
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/opora-next.p12"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: release-files/*
+          if-no-files-found: error
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Package standalone HTML and iPhone PWA
+        run: |
+          python3 web-source/build.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil,zipfile,re
+          root=Path('.')
+          out=Path('release-files');out.mkdir()
+          html=(root/'web-source/index.html').read_text()
+          assert 'Опора · 1.0.0' in html and 'Сделано NoSmoke' in html and 'opora-homework-v1' in html
+          for cls in ['nav','footer-nav']:
+              nav=re.search(r'<nav class="'+cls+r'"[^>]*>(.*?)</nav>',html,re.S).group(1)
+              assert re.findall(r'data-view="([^"]+)"',nav)[-1]=='homework'
+          shutil.copy2(root/'web-source/index.html',out/'Opora-1.0.0.html')
+          with zipfile.ZipFile(out/'Opora-1.0.0-iPhone-PWA.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in ['index.html','sw.js','manifest.webmanifest','icon-192.png','icon-512.png']:
+                  z.write(root/'web-source'/name,name)
+              for name in ['ELEMENTS_LICENSE.md','MORPHOLOGY_LICENSE.md']:
+                  z.write(root/name,name)
+              z.write(root/'release/INSTALL_IPHONE_RU.txt','INSTALL_IPHONE_RU.txt')
+              z.writestr('.nojekyll','')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-release
+          path: release-files/*
+          if-no-files-found: error
+  offline-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test actual ML Kit models with emulator network disabled
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          disable-animations: true
+          script: gradle -p android connectedDebugAndroidTest --no-daemon
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: offline-model-test-results
+          path: android/app/build/reports/androidTests/
+  publish:
+    needs: [windows, android, web, offline-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-release'
+          path: release-files
+          merge-multiple: true
+      - name: Generate SHA256 checksums
+        working-directory: release-files
+        run: sha256sum * > SHA256SUMS.txt
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v1.0.0
+        run: |
+          TAG="$RELEASE_TAG"
+          gh release upload "$TAG" release-files/* --clobber
