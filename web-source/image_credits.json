@@ -1,0 +1,65 @@
+[
+  {
+    "id": "pushkin",
+    "file": "assets/pushkin.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Portrait_of_Alexander_Pushkin_(Orest_Kiprensky,_1827).PNG",
+    "license": "Public domain",
+    "artist": "Orest Kiprensky",
+    "title": "File:Portrait of Alexander Pushkin (Orest Kiprensky, 1827).PNG",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/5/56/Portrait_of_Alexander_Pushkin_%28Orest_Kiprensky%2C_1827%29.PNG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  {
+    "id": "dostoevsky",
+    "file": "assets/dostoevsky.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Dostoevsky_1872.jpg",
+    "license": "Public domain",
+    "artist": "Unknown authorUnknown author",
+    "title": "File:Dostoevsky 1872.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Dostoevsky_1872.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  {
+    "id": "tolstoy",
+    "file": "assets/tolstoy.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Ilya_Efimovich_Repin_(1844-1930)_-_Portrait_of_Leo_Tolstoy_(1887).jpg",
+    "license": "Public domain",
+    "artist": "Ilya Repin",
+    "title": "File:Ilya Efimovich Repin (1844-1930) - Portrait of Leo Tolstoy (1887).jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Ilya_Efimovich_Repin_%281844-1930%29_-_Portrait_of_Leo_Tolstoy_%281887%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  {
+    "id": "lermontov",
+    "file": "assets/lermontov.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Mikhail_Lermontov,_1840.jpg",
+    "license": "Public domain",
+    "artist": "Petr Zabolotskiy",
+    "title": "File:Mikhail Lermontov, 1840.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/1/16/Mikhail_Lermontov%2C_1840.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  {
+    "id": "gogol",
+    "file": "assets/gogol.png",
+    "source": "https://commons.wikimedia.org/wiki/File:N.Gogol_by_F.Moller_(1840,_Tretyakov_gallery).jpg",
+    "license": "Public domain",
+    "artist": "Otto Friedrich Theodor von Möller",
+    "title": "File:N.Gogol by F.Moller (1840, Tretyakov gallery).jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/b/b2/N.Gogol_by_F.Moller_%281840%2C_Tretyakov_gallery%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  {
+    "id": "chekhov",
+    "file": "assets/chekhov.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Chekhov_1898_by_Osip_Braz.jpg",
+    "license": "Public domain",
+    "artist": "Osip Braz",
+    "title": "File:Chekhov 1898 by Osip Braz.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/e/e9/Chekhov_1898_by_Osip_Braz.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  },
+  {
+    "id": "turgenev",
+    "file": "assets/turgenev.png",
+    "source": "https://commons.wikimedia.org/wiki/File:Turgenev_1872_by_Perov.jpg",
+    "license": "CC0",
+    "artist": "Vasily Perov / Василий Перов",
+    "title": "File:Turgenev 1872 by Perov.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/e/ee/Turgenev_1872_by_Perov.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+  }
+]
