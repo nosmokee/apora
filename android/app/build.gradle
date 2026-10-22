@@ -2,6 +2,29 @@ plugins { id 'com.android.application' }
 android {
  namespace 'ru.opora.study'
  compileSdk 35
- defaultConfig { applicationId 'ru.opora.study'; minSdk 26; targetSdk 35; versionCode 9; versionName '0.8.1' }
+ defaultConfig {
+  // New stable identity: old 0.6 signing key is unavailable. Coexists with 0.6.
+  applicationId 'ru.opora.study.next'
+  minSdk 26
+  targetSdk 35
+  versionCode 9
+  versionName '0.8.1'
+ }
+ signingConfigs {
+  release {
+   if (System.getenv('OPORA_KEYSTORE_PATH')) {
+    storeFile file(System.getenv('OPORA_KEYSTORE_PATH'))
+    storePassword System.getenv('OPORA_KEYSTORE_PASSWORD')
+    keyAlias 'opora-next'
+    keyPassword System.getenv('OPORA_KEYSTORE_PASSWORD')
+   }
+  }
+ }
+ buildTypes {
+  release {
+   if (System.getenv('OPORA_KEYSTORE_PATH')) signingConfig signingConfigs.release
+   minifyEnabled false
+  }
+ }
  compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
 }

@@ -4,7 +4,8 @@
   "description": "Офлайн-учебная полка: формулы и задания",
   "main": "app/main.cjs",
   "scripts": {
-    "build:win": "electron-builder --win portable --x64"
+    "build:win": "electron-builder --win portable --x64",
+    "test:smoke": "electron tests/smoke.cjs"
   },
   "keywords": [],
   "author": "NoSmoke",
