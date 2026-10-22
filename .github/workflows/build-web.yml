@@ -1,0 +1,42 @@
+name: Build Opora web and platform assets
+on:
+  push:
+    branches: [main]
+    paths: ['web-source/**', 'android/**', 'windows/**', '.github/workflows/build-web.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: opora-web-build
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build self-contained HTML and synchronize platform resources
+        run: |
+          python3 web-source/build.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          root=Path('.')
+          for target in [root, root/'windows/app', root/'android/app/src/main/assets']:
+              target.mkdir(parents=True,exist_ok=True)
+              for name in ['index.html','sw.js','manifest.webmanifest','icon-192.png','icon-512.png']:
+                  shutil.copy2(root/'web-source'/name,target/name)
+          PY
+      - name: Commit generated resources
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html sw.js web-source/index.html windows/app/ android/app/src/main/assets/
+          if ! git diff --cached --quiet; then
+            git commit -m 'Build Opora 0.8 web and bundled platform assets'
+            git push
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Opora-0.8-HTML
+          path: index.html
+          retention-days: 14

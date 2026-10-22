@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="ru.opora.study" android:versionCode="6" android:versionName="0.6">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="ru.opora.study" android:versionCode="8" android:versionName="0.8">
+ <uses-permission android:name="android.permission.INTERNET" />
  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
  <application android:label="Опора" android:icon="@mipmap/ic_launcher" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false" android:supportsRtl="true" android:usesCleartextTraffic="false" android:hardwareAccelerated="true">
   <activity android:name=".MainActivity" android:exported="true" android:enableOnBackInvokedCallback="false" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|screenSize|keyboardHidden">

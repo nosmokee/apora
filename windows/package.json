@@ -1,13 +1,13 @@
 {
   "name": "opora",
-  "version": "0.6.0",
+  "version": "0.8.0",
   "description": "Офлайн-учебная полка: формулы и задания",
   "main": "app/main.cjs",
   "scripts": {
     "build:win": "electron-builder --win portable --x64"
   },
   "keywords": [],
-  "author": "Руслан Полянский · 12 ИСК",
+  "author": "NoSmoke",
   "license": "UNLICENSED",
   "type": "commonjs",
   "devDependencies": {
@@ -35,10 +35,10 @@
         }
       ],
       "signAndEditExecutable": false,
-      "artifactName": "Opora-0.6-Windows-x64.exe"
+      "artifactName": "Opora-0.8-Windows-x64.exe"
     },
     "portable": {
-      "artifactName": "Opora-0.6-Windows-x64.exe",
+      "artifactName": "Opora-0.8-Windows-x64.exe",
       "requestExecutionLevel": "user"
     },
     "compression": "normal"
