@@ -97,66 +97,6 @@
   display: inline-block;
   margin-block: 4px 16px;
 }
-html[data-text-size="large"] .main,
-html[data-text-size="large"] .dialog-body {
-  font-size: 18px;
-}
-html[data-text-size="extra"] .main,
-html[data-text-size="extra"] .dialog-body {
-  font-size: 20px;
-}
-html[data-text-size="large"]
-  :is(.reading-prose, .essay-full-text, .reader-page) {
-  font-size: 19px;
-}
-html[data-text-size="extra"]
-  :is(.reading-prose, .essay-full-text, .reader-page) {
-  font-size: 22px;
-}
-html[data-button-size="large"]
-  :is(.main, .dialog-body)
-  button:not(.star, .close) {
-  min-height: 52px;
-  padding-block: 13px;
-}
-html[data-button-size="extra"]
-  :is(.main, .dialog-body)
-  button:not(.star, .close) {
-  min-height: 60px;
-  padding-block: 17px;
-}
-html[data-button-shape="round"]
-  button:not(.theme-toggle, .star, .element-cell) {
-  border-radius: 20px;
-}
-html[data-button-shape="square"] button:not(.theme-toggle, .star) {
-  border-radius: 0;
-}
-html[data-wallpaper="blue"] {
-  --wallpaper:
-    radial-gradient(ellipse at top right, #c1d6ff, transparent 65%),
-    linear-gradient(135deg, #edf4ff, #dce9fb);
-}
-html[data-wallpaper="sage"] {
-  --wallpaper:
-    radial-gradient(ellipse at top right, #bcd7c5, transparent 65%),
-    linear-gradient(135deg, #f0f4e9, #d4e5db);
-}
-html[data-wallpaper="night"] {
-  --wallpaper: linear-gradient(135deg, #a0a8c9, #e1d1c5);
-}
-html[data-wallpaper="image"] {
-  --wallpaper: var(--user-wallpaper);
-}
-html:not([data-wallpaper="paper"]) .app {
-  background-image: var(--wallpaper);
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
-html:not([data-wallpaper="paper"]) .main {
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
-}
 @media (max-width: 760px) {
   .v2-fields {
     grid-template-columns: 1fr;
@@ -192,3 +132,47 @@ html:not([data-wallpaper="paper"]) .main {
   display: block;
   margin: 0 auto;
 }
+
+.more-group {
+  margin-block: 28px;
+}
+.more-group h2 {
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+.more-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.more-link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  min-height: 84px;
+  padding: 16px;
+  white-space: normal;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.more-link strong {
+  font-size: 16px;
+}
+.more-link small {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.more-link[hidden],
+.more-group[hidden] {
+  display: none !important;
+}
+@media (max-width: 500px) {
+  .more-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nav-symbol svg { width: 19px; height: 19px; display: block; }

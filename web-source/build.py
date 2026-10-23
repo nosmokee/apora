@@ -11,7 +11,7 @@ SCRIPTS = [
     'app.js', 'study.js', 'upgrades.js', 'fixes.js', 'topic_tasks.js',
     'compatibility.js', 'russian_topics.js', 'learning_v07.js',
     'homework.js', 'v1.js', 'exams.js',
-    'modules/storage.js', 'modules/schedule.js', 'modules/personalization.js',
+    'modules/storage.js', 'modules/schedule.js', 'modules/navigation.js',
     'modules/reader.js', 'modules/textbooks.js', 'modules/about.js', 'modules/integration.js',
 ]
 

@@ -7,10 +7,10 @@
       "Предмет, время и заметки на неделю.",
       api.schedule.render,
     ],
-    personalization: [
-      "Персонализация",
-      "Кнопки, размер текста, тема и обои.",
-      api.appearance.render,
+    more: [
+      "Ещё",
+      "Расписание, инструменты и сохранённые материалы.",
+      api.navigation.render,
     ],
     reader: [
       "Читать книги",
@@ -25,17 +25,38 @@
   };
   const previousSetView = setView;
   setView = function (view) {
+    if (view === "personalization") view = "more";
     if (views[view]) {
       const [title, intro, render] = views[view];
       api.heading(view, title, intro);
       render();
       window.scrollTo(0, 0);
     } else previousSetView(view);
-    if (view === "subjects") {
-      $(".quick-learning")?.insertAdjacentHTML(
-        "beforeend",
-        '<button type="button" data-view="schedule">Расписание →</button><button type="button" data-view="personalization">Персонализация →</button><button type="button" data-view="textbooks">Учебные маршруты →</button><button type="button" data-view="reader">Полные книги →</button>',
-      );
+    // A legacy appearance route no longer opens a settings screen.
+    const direct = new Set([
+      "subjects",
+      "reading",
+      "essays",
+      "translate",
+      "homework",
+    ]);
+    const secondary = !direct.has(activeView);
+    document
+      .querySelectorAll('.footer-nav [data-view="more"]')
+      .forEach((button) => {
+        button.classList.toggle("active", secondary);
+        if (secondary) button.setAttribute("aria-current", "page");
+        else button.removeAttribute("aria-current");
+      });
+    const sidebarDirect = document.querySelector(
+      `.nav [data-view="${activeView}"]`,
+    );
+    const more = document.querySelector('.nav [data-view="more"]');
+    if (more) {
+      const selected = !sidebarDirect || activeView === "more";
+      more.classList.toggle("active", selected);
+      if (selected) more.setAttribute("aria-current", "page");
+      else more.removeAttribute("aria-current");
     }
   };
   const previousOpenCard = openCard;
@@ -118,6 +139,8 @@
   const previousSubjectRender = renderSubjects;
   renderSubjects = function () {
     previousSubjectRender();
+    // Navigation belongs in the persistent menus, not duplicate buttons above subjects.
+    $(".quick-learning")?.remove();
     $(".subject-search").insertAdjacentHTML(
       "afterend",
       '<label class="v2-checkbox"><input id="subjects-favorites-only" type="checkbox"> Предметы с избранными материалами</label>',

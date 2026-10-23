@@ -26,7 +26,8 @@ app.on('browser-window-created',(_event,win)=>{
     if(document.getElementById('translation-submit').textContent!=='Перевести на английский')throw Error('Translation direction');
     if(!document.getElementById('translation-submit').disabled)throw Error('Web offline translation must be unavailable');
     setView('schedule');if(!document.getElementById('schedule-form'))throw Error('Schedule');
-    setView('personalization');if(!document.getElementById('appearance-size'))throw Error('Appearance');
+    setView('more');if(!document.getElementById('more-search'))throw Error('More menu');
+    if(document.querySelector('[data-view=personalization]'))throw Error('Removed appearance link');
     if(DB.examBank.tasks.length!==56)throw Error('Offline bank count');
     if(DB.examBank.tasks.filter(t=>t.subject==='Математика').length!==16)throw Error('Math example count');
     if(DB.examBank.tasks.some(t=>t.subject.endsWith('язык')&&!['Русский язык','Английский язык'].includes(t.subject)))throw Error('Unexpected language');

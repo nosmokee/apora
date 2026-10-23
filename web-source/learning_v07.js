@@ -751,7 +751,7 @@ renderAbout = function () {
       ) {
         let n = 0;
         for (const key of await caches.keys())
-          if (/^opora-/.test(key) && key !== "opora-2.0.0-main2") {
+          if (/^opora-/.test(key) && key !== "opora-2.0.0-nav3") {
             await caches.delete(key);
             n++;
           }

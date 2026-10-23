@@ -1,5 +1,5 @@
 "use strict";
-const CACHE = "opora-2.0.0-main2";
+const CACHE = "opora-2.0.0-nav3";
 // Store the large self-contained HTML once, not both './' and './index.html'.
 const ASSETS = [
   "./index.html",

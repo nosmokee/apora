@@ -232,3 +232,4 @@ jobs:
           TAG="$RELEASE_TAG"
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Опора 2.0" --target "$GITHUB_SHA" --notes-file release/NOTES-v2.0.0.md
           gh release upload "$TAG" release-files/* --clobber
+          gh release edit "$TAG" --notes-file release/NOTES-v2.0.0.md
