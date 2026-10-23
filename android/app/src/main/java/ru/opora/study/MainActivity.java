@@ -20,18 +20,12 @@ import android.webkit.JavascriptInterface;
 import java.io.OutputStream;
 import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
-import java.net.URL;
-import java.net.URLEncoder;
-import javax.net.ssl.HttpsURLConnection;
 import org.json.JSONObject;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.io.ByteArrayInputStream;
 
 public class MainActivity extends Activity {
  private WebView web;
  private OfflineTranslation offline;
- private final ExecutorService translator=Executors.newSingleThreadExecutor();
  private String pendingSVG;
  private static final String HOME="file:///android_asset/index.html";
  @Override public void onCreate(Bundle state){
@@ -99,35 +93,7 @@ public class MainActivity extends Activity {
   @JavascriptInterface public void clearHttpCache(){
    runOnUiThread(new Runnable(){public void run(){if(web!=null)web.clearCache(true);}});
   }
-  // Only this fixed public translation endpoint is reachable through the bridge.
-  // Never accept a URL from JavaScript; no keys, cookies or translation history.
-  @JavascriptInterface public void translateEnglish(final String id,final String text){translateOnline(id,text,"en");}
-  @JavascriptInterface public void translateOnline(final String id,final String text,final String from){
-   if(!("en".equals(from)||"ru".equals(from)))return;
-   if(id==null||!id.matches("[0-9]{1,10}")||text==null)return;
-   try{if(text.getBytes("UTF-8").length>500)return;}catch(Exception ignored){return;}
-   if(translator.isShutdown())return;
-   translator.execute(new Runnable(){public void run(){
-    HttpsURLConnection connection=null;String payload;
-    try{
-     URL url=new URL("https://api.mymemory.translated.net/get?langpair="+("ru".equals(from)?"ru%7Cen":"en%7Cru")+"&q="+URLEncoder.encode(text,"UTF-8"));
-     connection=(HttpsURLConnection)url.openConnection();connection.setInstanceFollowRedirects(false);
-     connection.setConnectTimeout(8000);connection.setReadTimeout(10000);connection.setUseCaches(false);
-     connection.setRequestProperty("Accept","application/json");
-     int code=connection.getResponseCode();
-     if(code!=200)throw new Exception(code==429?"Лимит сервиса исчерпан. Попробуй позже.":"Сервис перевода недоступен.");
-     try(InputStream input=connection.getInputStream();ByteArrayOutputStream bytes=new ByteArrayOutputStream()){
-      byte[] buffer=new byte[4096];int n;
-      while((n=input.read(buffer))!=-1){if(bytes.size()+n>200000)throw new Exception("Ответ сервиса слишком большой.");bytes.write(buffer,0,n);}
-      payload=new JSONObject(new String(bytes.toByteArray(),"UTF-8")).toString();
-     }
-    }catch(Exception e){
-     try{payload=new JSONObject().put("error","Не удалось перевести текст. Проверь интернет или лимит сервиса.").toString();}catch(Exception ignored){payload="{}";}
-    }finally{if(connection!=null)connection.disconnect();}
-    final String result=payload;
-    runOnUiThread(new Runnable(){public void run(){if(web!=null)web.evaluateJavascript("window.oporaTranslationResult&&window.oporaTranslationResult("+JSONObject.quote(id)+","+result+");",null);}});
-   }});
-  }
+
 
   @JavascriptInterface public void saveSVG(final String filename,final String text){saveDocument(filename,text,"image/svg+xml");}
   @JavascriptInterface public void saveDocument(final String filename,final String text,final String mime){
@@ -151,5 +117,5 @@ public class MainActivity extends Activity {
    }
   }
  }
- @Override protected void onDestroy(){translator.shutdownNow();if(offline!=null)offline.close();if(web!=null){web.destroy();web=null;}super.onDestroy();}
+ @Override protected void onDestroy(){if(offline!=null)offline.close();if(web!=null){web.destroy();web=null;}super.onDestroy();}
 }

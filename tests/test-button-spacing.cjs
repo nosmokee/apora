@@ -20,12 +20,12 @@ const{chromium}=require('playwright'),assert=require('node:assert/strict'),path=
   }
   return{issues,textIssues,overflow:document.documentElement.scrollWidth>innerWidth+1};
  },scope);ok(report.issues.length===0,label+' touching controls '+JSON.stringify(report.issues));ok(!report.overflow,label+' page overflow');ok(report.textIssues.length===0,label+' text/action spacing '+JSON.stringify(report.textIssues));}
- const views=['subjects','reading','essays','geography','periodic','translate','subject-practice','calculator','solver','practice','favorites','homework','offline-exams','about'];
+ const views=['subjects','reading','essays','geography','periodic','translate','subject-practice','calculator','solver','practice','favorites','homework','offline-exams','about','schedule','personalization','reader','textbooks'];
  for(const width of [320,360,390,768,1024,1366]){
   await p.setViewportSize({width,height:900});
   for(const theme of ['light','dark']){
    await p.evaluate(t=>applyTheme(t),theme);
-   for(const v of views){await p.evaluate(v=>setView(v),v);await inspect('#view',`${width}/${theme}/${v}`);if([320,390,1366].includes(width)&&['offline-exams','about'].includes(v)){await p.evaluate(()=>document.querySelectorAll('#view details').forEach(d=>d.open=true));await inspect('#view',`${width}/${theme}/${v}/expanded`);}}
+   for(const v of views){await p.evaluate(v=>setView(v),v);await inspect('#view',`${width}/${theme}/${v}`);if([320,390,1366].includes(width)&&['offline-exams','about','schedule','personalization','reader','textbooks'].includes(v)){await p.evaluate(()=>document.querySelectorAll('#view details').forEach(d=>d.open=true));await inspect('#view',`${width}/${theme}/${v}/expanded`);}}
    for(const id of ['work-war','essay10-science-limits','bio10-dihybrid']){await p.evaluate(id=>openCard(id),id);await inspect('#dialog-body',`${width}/${theme}/${id}`);if([320,390,1366].includes(width)){await p.evaluate(()=>document.querySelectorAll('#dialog-body details').forEach(d=>d.open=true));await inspect('#dialog-body',`${width}/${theme}/${id}/expanded`);}await p.locator('#close-dialog').click();}
   }
  }

@@ -1,6 +1,6 @@
 {
   "name": "opora",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Офлайн-учебная полка: формулы и задания",
   "main": "app/main.cjs",
   "scripts": {
@@ -36,11 +36,11 @@
         }
       ],
       "signAndEditExecutable": true,
-      "artifactName": "Opora-1.0.0-Windows-x64.exe",
+      "artifactName": "Opora-2.0.0-Windows-x64.exe",
       "icon": "app/icon.ico"
     },
     "portable": {
-      "artifactName": "Opora-1.0.0-Windows-x64.exe",
+      "artifactName": "Opora-2.0.0-Windows-x64.exe",
       "requestExecutionLevel": "user"
     },
     "compression": "normal"

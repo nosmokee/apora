@@ -6,14 +6,14 @@ app.on('browser-window-created',(_event,win)=>{
  win.webContents.once('did-finish-load',async()=>{
   try{
    const result=await win.webContents.executeJavaScript(`(function(){
-    if(DB.version!=='1.0.0')throw Error('Wrong version');
+    if(DB.version!=='2.0.0')throw Error('Wrong version');
     const noMotion=document.createElement('style');noMotion.textContent='.theme-icons svg{transition:none!important}';document.head.append(noMotion);
     applyTheme('light');if(document.querySelector('.moon path').getTotalLength()<20)throw Error('Moon geometry');
     if(getComputedStyle(document.querySelector('.moon')).opacity!=='1')throw Error('Moon visibility');
     document.getElementById('theme-toggle').click();if(document.documentElement.dataset.theme!=='dark')throw Error('Theme toggle');
     applyTheme('light');
     if(document.querySelector('.nav [data-view]:last-child').dataset.view!=='homework')throw Error('Desktop order');
-    setView('about');if(!document.getElementById('view').textContent.includes('Сделано NoSmoke'))throw Error('Credit');
+    setView('about');if(!document.getElementById('view').textContent.includes('Создано NoSmoke'))throw Error('Credit');
     setView('homework');document.getElementById('hw-title').value='CI smoke test';
     document.getElementById('hw-text').value='Test note';document.getElementById('hw-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
     if(OporaHomework.getNotes().length!==1)throw Error('Homework save');
@@ -24,6 +24,9 @@ app.on('browser-window-created',(_event,win)=>{
     setView('translate');if(!document.getElementById('translation-form'))throw Error('Translator');
     document.getElementById('translation-direction').value='ru';document.getElementById('translation-direction').dispatchEvent(new Event('change'));
     if(document.getElementById('translation-submit').textContent!=='Перевести на английский')throw Error('Translation direction');
+    if(!document.getElementById('translation-submit').disabled)throw Error('Web offline translation must be unavailable');
+    setView('schedule');if(!document.getElementById('schedule-form'))throw Error('Schedule');
+    setView('personalization');if(!document.getElementById('appearance-size'))throw Error('Appearance');
     if(DB.examBank.tasks.length!==56)throw Error('Offline bank count');
     if(DB.examBank.tasks.filter(t=>t.subject==='Математика').length!==16)throw Error('Math example count');
     if(DB.examBank.tasks.some(t=>t.subject.endsWith('язык')&&!['Русский язык','Английский язык'].includes(t.subject)))throw Error('Unexpected language');

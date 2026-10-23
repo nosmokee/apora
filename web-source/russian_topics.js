@@ -1,55 +1,573 @@
 // v0.6: Russian-language tools are routed by topic, never by subject alone.
-function ruResult(answer,note=''){
- $('#topic-error').hidden=true;
- $('#topic-result').innerHTML='<div class="result"><h3>Ответ</h3><p class="answer">'+esc(answer)+'</p>'+(note?'<p class="fine">'+esc(note)+'</p>':'')+'</div>';
- $('#topic-result').scrollIntoView({block:'center'});
+function ruResult(answer, note = "") {
+  $("#topic-error").hidden = true;
+  $("#topic-result").innerHTML =
+    '<div class="result"><h3>Ответ</h3><p class="answer">' +
+    esc(answer) +
+    "</p>" +
+    (note ? '<p class="fine">' + esc(note) + "</p>" : "") +
+    "</div>";
+  $("#topic-result").scrollIntoView({ block: "center" });
 }
-function ruInput(id,label,value='',textarea=false){return '<label for="ru-'+id+'">'+esc(label)+'</label>'+(textarea?'<textarea rows="3"':'<input type="text"')+' id="ru-'+id+'" maxlength="1500" required '+(textarea?'>'+esc(value)+'</textarea>':'value="'+esc(value)+'" autocomplete="off">');}
-function ruSelect(id,label,options){return '<label for="ru-'+id+'">'+esc(label)+'</label><select id="ru-'+id+'">'+options.map(([v,l])=>'<option value="'+v+'">'+esc(l)+'</option>').join('')+'</select>';}
-function ruValue(id){return $('#ru-'+id).value.trim();}
-function ruPart(s){return s.trim().replace(/[.,;:!?]+\s*$/,'').trim();}
-function ruSentence(s){s=s.trim();return s+( /[.!?]$/.test(s)?'':'.');}
-function ruForm(c,title,description,fields,action,solve){
- const host=taskShell();$('#topic-workbench h3').textContent=title;
- $('#topic-workbench > p.fine').textContent=description;
- host.innerHTML='<form id="topic-form">'+fields+'<button type="submit" class="primary">'+esc(action)+'</button></form>';
- $('#topic-form').onsubmit=async event=>{event.preventDefault();const form=event.currentTarget,snapshot=JSON.stringify([...form.elements].map(x=>x.value));$('#topic-error').hidden=true;$('#topic-result').innerHTML='';try{const result=await solve();if(form!==$('#topic-form')||snapshot!==JSON.stringify([...form.elements].map(x=>x.value)))return;ruResult(result.answer,result.note);}catch(e){if(form===$('#topic-form'))taskError(e);}};
+function ruInput(id, label, value = "", textarea = false) {
+  return (
+    '<label for="ru-' +
+    id +
+    '">' +
+    esc(label) +
+    "</label>" +
+    (textarea ? '<textarea rows="3"' : '<input type="text"') +
+    ' id="ru-' +
+    id +
+    '" maxlength="1500" required ' +
+    (textarea
+      ? ">" + esc(value) + "</textarea>"
+      : 'value="' + esc(value) + '" autocomplete="off">')
+  );
 }
-async function ruPOS(word){const rows=await morphLookup(word);return {answer:rows.length===1?'Найдена 1 часть речи: '+rows[0]+'.':rows.length?'Найдено '+rows.length+' варианта: '+rows.join('; ')+'.':'Слово не найдено в словаре.',note:rows.length>1?'Чтобы выбрать один вариант, нужен контекст предложения.':rows.length?'':'Проверь написание или попробуй начальную форму.'};}
-async function ruNN(raw){const word=raw.toLowerCase().trim();if(!/^[а-яё]+(?:_|\(н\/нн\))[а-яё]+$/u.test(word))throw Error('Обозначь место выбора: стекля_ый или стекля(н/нн)ый. Только одно место Н / НН.');const stem=word.replace('(н/нн)','_'),variants=[stem.replace('_','н'),stem.replace('_','нн')],found=[];for(const w of variants)if((await morphLookup(w)).length)found.push(w);return{answer:found.length===1?found[0]:found.length?'Оба варианта есть в словаре: '+found.join('; ')+'.':'Вариант не найден в словаре.',note:found.length===1?'Словарное написание: '+(found[0]===variants[0]?'одна Н.':'две Н (НН).'):found.length?'Выбор зависит от значения, части речи и зависимых слов. Нужен контекст.':'Это не означает, что слово неверное: словарь не содержит все возможные слова.'};}
-const ruNeverWithoutNe=new Set(['ненавидеть','негодовать','недоумевать','неистовствовать','невзлюбить','несдобровать','нездоровиться','ненавижу','ненавидит','ненавидел','негодую','негодует','недоумеваю','недоумевает']);
-function ruNe(word,kind,meaning){word=word.trim().toLowerCase().replace(/^не\s+/,'');if(!/^[а-яё-]+$/u.test(word))throw Error('Введи одно слово без частицы НЕ, например «читать» или «правда».');if(kind==='verb'){if(ruNeverWithoutNe.has(word))return{answer:word,note:'Слитно: это слово не употребляется без НЕ.'};if(word.startsWith('недо'))return{answer:'Нужен контекст.',note:'Приставка НЕДО- со значением недостаточности пишется слитно; НЕ + ДО- при незавершённом действии — раздельно. Эта модель не выбирает значение автоматически.'};return{answer:'не '+word,note:'По выбранной модели: НЕ с глаголом пишется раздельно. Для редких слов и исключений проверь словарь.'};}return{answer:meaning==='new'?'не'+word:'не '+word,note:meaning==='new'?'По выбранному условию утверждается новое понятие, возможна замена синонимом без НЕ — слитно. Синоним и значение проверяются по контексту.':meaning==='opposition'?'Есть прямое противопоставление с «а» — раздельно.':'По выбранному условию это отрицание, а не новое понятие — раздельно.'};}
-function russianWorkbench(c){
- if(c.id==='k047'){ruForm(c,'Часть речи','Введи одно слово. Если словарный вариант один, ответ будет одной строкой.',ruInput('word','Русское слово'),'Определить часть речи',()=>ruPOS(ruValue('word')));return;}
- if(c.id==='k048'){
-  ruForm(c,'Грамматическая основа','Подсказка по словарю: выделяет глаголы и возможные именные слова. Подлежащее по падежу и смыслу выбираешь самостоятельно — это не готовый синтаксический разбор.',ruInput('sentence','Своё предложение','Мама читает книгу.',true),'Найти опорные слова',async()=>{const tokens=[...new Set((ruValue('sentence').match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)*/gu)||[]).map(x=>x.toLowerCase()))];if(!tokens.length)throw Error('Введи предложение на русском языке.');if(tokens.length>60)throw Error('Не более 60 разных слов за один раз.');const verbs=[],names=[];for(const word of tokens){const pos=await morphLookup(word);if(pos.includes('глагол (личная форма)'))verbs.push(word);if(pos.some(x=>x==='существительное'||x==='местоимение-существительное'))names.push(word);}return{answer:'Личные формы глагола: '+(verbs.join(', ')||'не найдены')+'.\nИменные слова: '+(names.join(', ')||'не найдены')+'.',note:'Не каждое именное слово — подлежащее, а сказуемое бывает не только глагольным. Это кандидаты для разбора, не подтверждённая грамматическая основа.'};});return;
- }
- if(c.id==='k049'){
-  ruForm(c,'Запятая в ССП','Модель для двух уже выделенных самостоятельных частей. Укажи союз и наличие общего элемента; приложение не определяет границы частей само.',ruInput('left','Первая часть','Солнце село')+ruSelect('conj','Одиночный союз',[['и','и'],['а','а'],['но','но'],['или','или'],['либо','либо'],['зато','зато']])+ruInput('right','Вторая часть','на улице стало прохладно')+ruSelect('common','Общий элемент или общее вопросительное / восклицательное значение',[['no','Нет'],['yes','Да, относится к обеим частям']]),'Поставить знак',()=>{const conj=ruValue('conj'),noComma=ruValue('common')==='yes'&&['и','или','либо'].includes(conj);return{answer:ruSentence(ruPart(ruValue('left'))+(noComma?' ':', ')+conj+' '+ruPart(ruValue('right'))),note:noComma?'По указанным условиям между частями с одиночным союзом запятая не ставится.':'Между самостоятельными частями ССП перед союзом ставится запятая. Модель не охватывает все авторские и интонационные варианты.'};});return;
- }
- if(c.id==='k050'){
-  ruForm(c,'Запятые в СПП','Введи уже выделенные главную и придаточную части. Союз включи в придаточную часть. Сложные случаи с несколькими придаточными здесь не разбираются.',ruSelect('position','Где находится придаточная часть',[['after','После главной'],['before','Перед главной'],['inside','Внутри главной']])+ruInput('main','Главная часть / её начало','Я знаю')+ruInput('sub','Придаточная часть с союзом','что ты придёшь')+'<label for="ru-end">Продолжение главной части (если придаточная внутри)</label><input id="ru-end" type="text" maxlength="1500" autocomplete="off">','Расставить запятые',()=>{const a=ruPart(ruValue('main')),s=ruPart(ruValue('sub')),pos=ruValue('position'),z=ruPart(ruValue('end'));if(pos==='inside'&&!z)throw Error('Введи продолжение главной части.');return{answer:ruSentence(pos==='before'?s+', '+a:pos==='inside'?a+', '+s+', '+z:a+', '+s),note:pos==='inside'?'Придаточная часть внутри главной выделяется запятыми с двух сторон.':'Главная и придаточная части отделяются запятой. Регистр первой буквы проверь по месту в предложении.'};});return;
- }
- if(c.id==='k051'){
-  ruForm(c,'Знак в БСП','Самостоятельно выбери смысловую связь двух частей. По этой связи модель подставит знак — она не угадывает смысл текста.',ruInput('left','Первая часть','Я остался дома')+ruInput('right','Вторая часть','начался дождь')+ruSelect('relation','Как связаны части',[['reason','Вторая объясняет причину первой'],['explain','Вторая поясняет или дополняет первую'],['result','Вторая — результат или вывод'],['contrast','Противопоставление'],['condition','Первая — условие или время второй'],['list','Простое перечисление событий'],['long','Перечисление распространённых частей']]),'Выбрать знак',()=>{const r=ruValue('relation'),colon=['reason','explain'].includes(r),dash=['result','contrast','condition'].includes(r),mark=colon?': ':dash?' — ':r==='long'?'; ':', ';return{answer:ruSentence(ruPart(ruValue('left'))+mark+ruPart(ruValue('right'))),note:colon?'Двоеточие: причина, пояснение или дополнение по выбранному смыслу.':dash?'Тире: результат, противопоставление, условие или время по выбранному смыслу.':r==='long'?'Точка с запятой разделяет распространённые части при перечислении.':'Запятая разделяет перечисляемые события. Возможны другие знаки при иной смысловой связи или интонации.'};});return;
- }
- if(c.id==='k052'){
-  ruForm(c,'Обособление оборота','Введи уже выделенный оборот и части предложения. Модель расставляет знаки по выбранным условиям, а не находит оборот автоматически.',ruSelect('turn','Вид и положение оборота',[['part-after','Причастный после определяемого существительного'],['part-before','Причастный перед определяемым существительным, без дополнительных условий'],['part-special','Причастный перед существительным с добавочным значением причины / уступки'],['gerund','Обычный деепричастный оборот, не устойчивое сочетание']])+ruInput('before','Текст перед оборотом (можно оставить пустым)','Книга').replace(' required ',' ')+ruInput('turntext','Сам оборот','прочитанная вчера')+ruInput('after','Текст после оборота (можно оставить пустым)','лежит на столе').replace(' required ',' '),'Расставить знаки',()=>{const kind=ruValue('turn'),a=ruPart(ruValue('before')),t=ruPart(ruValue('turntext')),z=ruPart(ruValue('after')),separate=kind!=='part-before';if(!a&&!z)throw Error('Добавь текст предложения до или после оборота.');return{answer:ruSentence([a,t,z].filter(Boolean).join(separate?', ':' ')),note:kind==='gerund'?'Деепричастный оборот обычно обособляется. Исполнитель действия должен совпадать с исполнителем основного действия; это модель не проверяет. Устойчивые сочетания не поддерживаются.':separate?'По выбранным условиям причастный оборот обособляется.':'По выбранным условиям перед определяемым существительным оборот не обособляется. При личном местоимении и дополнительных значениях правило другое.'};});return;
- }
- if(c.id==='k053'){
-  ruForm(c,'НЕ: слитно или раздельно','Модель для глаголов и существительных. Часть речи и смысл укажи сам; значение произвольного предложения автоматически не определяется.',ruInput('neword','Слово без частицы НЕ','читать')+ruSelect('kind','Часть речи',[['verb','Глагол'],['noun','Существительное']])+ruSelect('meaning','Для существительного: смысл',[['deny','Отрицание'],['new','Новое понятие; есть подходящий синоним без НЕ'],['opposition','Прямое противопоставление с союзом «а»']]),'Применить правило',()=>ruNe(ruValue('neword'),ruValue('kind'),ruValue('meaning')));return;
- }
- if(c.id==='k054'){
-  ruForm(c,'Проверка Н / НН','Введи слово с одним пропуском вместо Н или НН. Проверка идёт по встроенному словарю; если допустимы оба написания, понадобится контекст.',ruInput('nn','Слово с пропуском, например стекля_ый','стекля_ый'),'Проверить Н / НН',()=>ruNN(ruValue('nn')));return;
- }
- if(c.id==='k055'||c.kind==='essay'){
-  ruForm(c,'Собрать свой аргумент',c.kind==='essay'?'Тема: «'+c.title+'». Заполни части своего рассуждения. Это сборка текста по структуре, не автоматическая оценка сочинения.':'Заполни тезис, пример и объяснение своими словами. Модель соберёт текст; достоверность примера и качество аргумента не оцениваются.',ruInput('thesis','Тезис','',true)+ruInput('example','Свой пример','',true)+ruInput('explain','Как пример подтверждает тезис','',true)+ruInput('conclusion','Вывод','',true),'Собрать аргумент',()=>({answer:['thesis','example','explain','conclusion'].map(ruValue).map(ruSentence).join('\n\n'),note:'Текст собран из твоих формулировок. Проверь связь примера с тезисом и фактическую точность.'}));return;
- }
- if(c.id==='k056'){
-  ruForm(c,'Редактирование своего текста','Проверка близких повторов и ограниченного списка речевых излишеств. Это не полная проверка орфографии, пунктуации или грамматики.',ruInput('text','Текст для проверки','Он вернулся обратно домой. Он рассказал рассказ о поездке.',true),'Найти повторы и излишества',()=>{const text=ruValue('text'),words=(text.toLowerCase().match(/[а-яё]+/gu)||[]);if(!words.length)throw Error('Введи текст на русском языке.');const stop=new Set(['и','в','на','с','к','у','а','но','не','по','о','из','за','что','как','это','он','она','оно','они','я','мы','ты','вы','его','её','их']),repeats=[];for(let i=0;i<words.length;i++)if(words[i].length>2&&!stop.has(words[i])&&words.slice(Math.max(0,i-12),i).includes(words[i]))repeats.push(words[i]);const rules=[[/вернул(?:ся|ась|ись|ось)\s+обратно/iu,'«Вернуться обратно»: проверь, нужно ли слово «обратно».'],[/главн(?:ая|ую|ой)\s+сут[ьиь]/iu,'«Главная суть»: возможно лишнее определение.'],[/свободн(?:ая|ую|ой)\s+ваканси/iu,'«Свободная вакансия»: обычно достаточно «вакансия».'],[/перв(?:ый|ого|ым)\s+дебют/iu,'«Первый дебют»: обычно достаточно «дебют».'],[/памятн(?:ый|ого|ым)\s+сувенир/iu,'«Памятный сувенир»: проверь необходимость определения.'],[/рассказал(?:а|и)?\s+рассказ/iu,'«Рассказал рассказ»: возможен однокоренной повтор.']],notes=rules.filter(([r])=>r.test(text)).map(([,s])=>s);if(repeats.length)notes.unshift('Близкий повтор: '+[...new Set(repeats)].join(', ')+'.');return{answer:notes.length?notes.join('\n'):'В рамках этой проверки замечаний не найдено.',note:'Это подсказки для редактирования, а не подтверждение полной грамотности. Повтор может быть художественным приёмом.'};});return;
- }
- guidedWorkbench(c);
+function ruSelect(id, label, options) {
+  return (
+    '<label for="ru-' +
+    id +
+    '">' +
+    esc(label) +
+    '</label><select id="ru-' +
+    id +
+    '">' +
+    options
+      .map(([v, l]) => '<option value="' + v + '">' + esc(l) + "</option>")
+      .join("") +
+    "</select>"
+  );
+}
+function ruValue(id) {
+  return $("#ru-" + id).value.trim();
+}
+function ruPart(s) {
+  return s
+    .trim()
+    .replace(/[.,;:!?]+\s*$/, "")
+    .trim();
+}
+function ruSentence(s) {
+  s = s.trim();
+  return s + (/[.!?]$/.test(s) ? "" : ".");
+}
+function ruForm(c, title, description, fields, action, solve) {
+  const host = taskShell();
+  $("#topic-workbench h3").textContent = title;
+  $("#topic-workbench > p.fine").textContent = description;
+  host.innerHTML =
+    '<form id="topic-form">' +
+    fields +
+    '<button type="submit" class="primary">' +
+    esc(action) +
+    "</button></form>";
+  $("#topic-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget,
+      snapshot = JSON.stringify([...form.elements].map((x) => x.value));
+    $("#topic-error").hidden = true;
+    $("#topic-result").innerHTML = "";
+    try {
+      const result = await solve();
+      if (
+        form !== $("#topic-form") ||
+        snapshot !== JSON.stringify([...form.elements].map((x) => x.value))
+      )
+        return;
+      ruResult(result.answer, result.note);
+    } catch (e) {
+      if (form === $("#topic-form")) taskError(e);
+    }
+  };
+}
+async function ruPOS(word) {
+  const rows = await morphLookup(word);
+  return {
+    answer:
+      rows.length === 1
+        ? "Найдена 1 часть речи: " + rows[0] + "."
+        : rows.length
+          ? "Найдено " + rows.length + " варианта: " + rows.join("; ") + "."
+          : "Слово не найдено в словаре.",
+    note:
+      rows.length > 1
+        ? "Чтобы выбрать один вариант, нужен контекст предложения."
+        : rows.length
+          ? ""
+          : "Проверь написание или попробуй начальную форму.",
+  };
+}
+async function ruNN(raw) {
+  const word = raw.toLowerCase().trim();
+  if (!/^[а-яё]+(?:_|\(н\/нн\))[а-яё]+$/u.test(word))
+    throw Error(
+      "Обозначь место выбора: стекля_ый или стекля(н/нн)ый. Только одно место Н / НН.",
+    );
+  const stem = word.replace("(н/нн)", "_"),
+    variants = [stem.replace("_", "н"), stem.replace("_", "нн")],
+    found = [];
+  for (const w of variants) if ((await morphLookup(w)).length) found.push(w);
+  return {
+    answer:
+      found.length === 1
+        ? found[0]
+        : found.length
+          ? "Оба варианта есть в словаре: " + found.join("; ") + "."
+          : "Вариант не найден в словаре.",
+    note:
+      found.length === 1
+        ? "Словарное написание: " +
+          (found[0] === variants[0] ? "одна Н." : "две Н (НН).")
+        : found.length
+          ? "Выбор зависит от значения, части речи и зависимых слов. Нужен контекст."
+          : "Это не означает, что слово неверное: словарь не содержит все возможные слова.",
+  };
+}
+const ruNeverWithoutNe = new Set([
+  "ненавидеть",
+  "негодовать",
+  "недоумевать",
+  "неистовствовать",
+  "невзлюбить",
+  "несдобровать",
+  "нездоровиться",
+  "ненавижу",
+  "ненавидит",
+  "ненавидел",
+  "негодую",
+  "негодует",
+  "недоумеваю",
+  "недоумевает",
+]);
+function ruNe(word, kind, meaning) {
+  word = word
+    .trim()
+    .toLowerCase()
+    .replace(/^не\s+/, "");
+  if (!/^[а-яё-]+$/u.test(word))
+    throw Error(
+      "Введи одно слово без частицы НЕ, например «читать» или «правда».",
+    );
+  if (kind === "verb") {
+    if (ruNeverWithoutNe.has(word))
+      return {
+        answer: word,
+        note: "Слитно: это слово не употребляется без НЕ.",
+      };
+    if (word.startsWith("недо"))
+      return {
+        answer: "Нужен контекст.",
+        note: "Приставка НЕДО- со значением недостаточности пишется слитно; НЕ + ДО- при незавершённом действии — раздельно. Эта модель не выбирает значение автоматически.",
+      };
+    return {
+      answer: "не " + word,
+      note: "По выбранной модели: НЕ с глаголом пишется раздельно. Для редких слов и исключений проверь словарь.",
+    };
+  }
+  return {
+    answer: meaning === "new" ? "не" + word : "не " + word,
+    note:
+      meaning === "new"
+        ? "По выбранному условию утверждается новое понятие, возможна замена синонимом без НЕ — слитно. Синоним и значение проверяются по контексту."
+        : meaning === "opposition"
+          ? "Есть прямое противопоставление с «а» — раздельно."
+          : "По выбранному условию это отрицание, а не новое понятие — раздельно.",
+  };
+}
+function russianWorkbench(c) {
+  if (c.id === "k047") {
+    ruForm(
+      c,
+      "Часть речи",
+      "Введи одно слово. Если словарный вариант один, ответ будет одной строкой.",
+      ruInput("word", "Русское слово"),
+      "Определить часть речи",
+      () => ruPOS(ruValue("word")),
+    );
+    return;
+  }
+  if (c.id === "k048") {
+    ruForm(
+      c,
+      "Грамматическая основа",
+      "Подсказка по словарю: выделяет глаголы и возможные именные слова. Подлежащее по падежу и смыслу выбираешь самостоятельно — это не готовый синтаксический разбор.",
+      ruInput("sentence", "Своё предложение", "Мама читает книгу.", true),
+      "Найти опорные слова",
+      async () => {
+        const tokens = [
+          ...new Set(
+            (
+              ruValue("sentence").match(/[А-Яа-яЁё]+(?:-[А-Яа-яЁё]+)*/gu) || []
+            ).map((x) => x.toLowerCase()),
+          ),
+        ];
+        if (!tokens.length) throw Error("Введи предложение на русском языке.");
+        if (tokens.length > 60)
+          throw Error("Не более 60 разных слов за один раз.");
+        const verbs = [],
+          names = [];
+        for (const word of tokens) {
+          const pos = await morphLookup(word);
+          if (pos.includes("глагол (личная форма)")) verbs.push(word);
+          if (
+            pos.some(
+              (x) =>
+                x === "существительное" || x === "местоимение-существительное",
+            )
+          )
+            names.push(word);
+        }
+        return {
+          answer:
+            "Личные формы глагола: " +
+            (verbs.join(", ") || "не найдены") +
+            ".\nИменные слова: " +
+            (names.join(", ") || "не найдены") +
+            ".",
+          note: "Не каждое именное слово — подлежащее, а сказуемое бывает не только глагольным. Это кандидаты для разбора, не подтверждённая грамматическая основа.",
+        };
+      },
+    );
+    return;
+  }
+  if (c.id === "k049") {
+    ruForm(
+      c,
+      "Запятая в ССП",
+      "Модель для двух уже выделенных самостоятельных частей. Укажи союз и наличие общего элемента; приложение не определяет границы частей само.",
+      ruInput("left", "Первая часть", "Солнце село") +
+        ruSelect("conj", "Одиночный союз", [
+          ["и", "и"],
+          ["а", "а"],
+          ["но", "но"],
+          ["или", "или"],
+          ["либо", "либо"],
+          ["зато", "зато"],
+        ]) +
+        ruInput("right", "Вторая часть", "на улице стало прохладно") +
+        ruSelect(
+          "common",
+          "Общий элемент или общее вопросительное / восклицательное значение",
+          [
+            ["no", "Нет"],
+            ["yes", "Да, относится к обеим частям"],
+          ],
+        ),
+      "Поставить знак",
+      () => {
+        const conj = ruValue("conj"),
+          noComma =
+            ruValue("common") === "yes" && ["и", "или", "либо"].includes(conj);
+        return {
+          answer: ruSentence(
+            ruPart(ruValue("left")) +
+              (noComma ? " " : ", ") +
+              conj +
+              " " +
+              ruPart(ruValue("right")),
+          ),
+          note: noComma
+            ? "По указанным условиям между частями с одиночным союзом запятая не ставится."
+            : "Между самостоятельными частями ССП перед союзом ставится запятая. Модель не охватывает все авторские и интонационные варианты.",
+        };
+      },
+    );
+    return;
+  }
+  if (c.id === "k050") {
+    ruForm(
+      c,
+      "Запятые в СПП",
+      "Введи уже выделенные главную и придаточную части. Союз включи в придаточную часть. Сложные случаи с несколькими придаточными здесь не разбираются.",
+      ruSelect("position", "Где находится придаточная часть", [
+        ["after", "После главной"],
+        ["before", "Перед главной"],
+        ["inside", "Внутри главной"],
+      ]) +
+        ruInput("main", "Главная часть / её начало", "Я знаю") +
+        ruInput("sub", "Придаточная часть с союзом", "что ты придёшь") +
+        '<label for="ru-end">Продолжение главной части (если придаточная внутри)</label><input id="ru-end" type="text" maxlength="1500" autocomplete="off">',
+      "Расставить запятые",
+      () => {
+        const a = ruPart(ruValue("main")),
+          s = ruPart(ruValue("sub")),
+          pos = ruValue("position"),
+          z = ruPart(ruValue("end"));
+        if (pos === "inside" && !z)
+          throw Error("Введи продолжение главной части.");
+        return {
+          answer: ruSentence(
+            pos === "before"
+              ? s + ", " + a
+              : pos === "inside"
+                ? a + ", " + s + ", " + z
+                : a + ", " + s,
+          ),
+          note:
+            pos === "inside"
+              ? "Придаточная часть внутри главной выделяется запятыми с двух сторон."
+              : "Главная и придаточная части отделяются запятой. Регистр первой буквы проверь по месту в предложении.",
+        };
+      },
+    );
+    return;
+  }
+  if (c.id === "k051") {
+    ruForm(
+      c,
+      "Знак в БСП",
+      "Самостоятельно выбери смысловую связь двух частей. По этой связи модель подставит знак — она не угадывает смысл текста.",
+      ruInput("left", "Первая часть", "Я остался дома") +
+        ruInput("right", "Вторая часть", "начался дождь") +
+        ruSelect("relation", "Как связаны части", [
+          ["reason", "Вторая объясняет причину первой"],
+          ["explain", "Вторая поясняет или дополняет первую"],
+          ["result", "Вторая — результат или вывод"],
+          ["contrast", "Противопоставление"],
+          ["condition", "Первая — условие или время второй"],
+          ["list", "Простое перечисление событий"],
+          ["long", "Перечисление распространённых частей"],
+        ]),
+      "Выбрать знак",
+      () => {
+        const r = ruValue("relation"),
+          colon = ["reason", "explain"].includes(r),
+          dash = ["result", "contrast", "condition"].includes(r),
+          mark = colon ? ": " : dash ? " — " : r === "long" ? "; " : ", ";
+        return {
+          answer: ruSentence(
+            ruPart(ruValue("left")) + mark + ruPart(ruValue("right")),
+          ),
+          note: colon
+            ? "Двоеточие: причина, пояснение или дополнение по выбранному смыслу."
+            : dash
+              ? "Тире: результат, противопоставление, условие или время по выбранному смыслу."
+              : r === "long"
+                ? "Точка с запятой разделяет распространённые части при перечислении."
+                : "Запятая разделяет перечисляемые события. Возможны другие знаки при иной смысловой связи или интонации.",
+        };
+      },
+    );
+    return;
+  }
+  if (c.id === "k052") {
+    ruForm(
+      c,
+      "Обособление оборота",
+      "Введи уже выделенный оборот и части предложения. Модель расставляет знаки по выбранным условиям, а не находит оборот автоматически.",
+      ruSelect("turn", "Вид и положение оборота", [
+        ["part-after", "Причастный после определяемого существительного"],
+        [
+          "part-before",
+          "Причастный перед определяемым существительным, без дополнительных условий",
+        ],
+        [
+          "part-special",
+          "Причастный перед существительным с добавочным значением причины / уступки",
+        ],
+        ["gerund", "Обычный деепричастный оборот, не устойчивое сочетание"],
+      ]) +
+        ruInput(
+          "before",
+          "Текст перед оборотом (можно оставить пустым)",
+          "Книга",
+        ).replace(" required ", " ") +
+        ruInput("turntext", "Сам оборот", "прочитанная вчера") +
+        ruInput(
+          "after",
+          "Текст после оборота (можно оставить пустым)",
+          "лежит на столе",
+        ).replace(" required ", " "),
+      "Расставить знаки",
+      () => {
+        const kind = ruValue("turn"),
+          a = ruPart(ruValue("before")),
+          t = ruPart(ruValue("turntext")),
+          z = ruPart(ruValue("after")),
+          separate = kind !== "part-before";
+        if (!a && !z)
+          throw Error("Добавь текст предложения до или после оборота.");
+        return {
+          answer: ruSentence(
+            [a, t, z].filter(Boolean).join(separate ? ", " : " "),
+          ),
+          note:
+            kind === "gerund"
+              ? "Деепричастный оборот обычно обособляется. Исполнитель действия должен совпадать с исполнителем основного действия; это модель не проверяет. Устойчивые сочетания не поддерживаются."
+              : separate
+                ? "По выбранным условиям причастный оборот обособляется."
+                : "По выбранным условиям перед определяемым существительным оборот не обособляется. При личном местоимении и дополнительных значениях правило другое.",
+        };
+      },
+    );
+    return;
+  }
+  if (c.id === "k053") {
+    ruForm(
+      c,
+      "НЕ: слитно или раздельно",
+      "Модель для глаголов и существительных. Часть речи и смысл укажи сам; значение произвольного предложения автоматически не определяется.",
+      ruInput("neword", "Слово без частицы НЕ", "читать") +
+        ruSelect("kind", "Часть речи", [
+          ["verb", "Глагол"],
+          ["noun", "Существительное"],
+        ]) +
+        ruSelect("meaning", "Для существительного: смысл", [
+          ["deny", "Отрицание"],
+          ["new", "Новое понятие; есть подходящий синоним без НЕ"],
+          ["opposition", "Прямое противопоставление с союзом «а»"],
+        ]),
+      "Применить правило",
+      () => ruNe(ruValue("neword"), ruValue("kind"), ruValue("meaning")),
+    );
+    return;
+  }
+  if (c.id === "k054") {
+    ruForm(
+      c,
+      "Проверка Н / НН",
+      "Введи слово с одним пропуском вместо Н или НН. Проверка идёт по встроенному словарю; если допустимы оба написания, понадобится контекст.",
+      ruInput("nn", "Слово с пропуском, например стекля_ый", "стекля_ый"),
+      "Проверить Н / НН",
+      () => ruNN(ruValue("nn")),
+    );
+    return;
+  }
+  if (c.id === "k055" || c.kind === "essay") {
+    ruForm(
+      c,
+      "Собрать свой аргумент",
+      c.kind === "essay"
+        ? "Тема: «" +
+            c.title +
+            "». Заполни части своего рассуждения. Это сборка текста по структуре, не автоматическая оценка сочинения."
+        : "Заполни тезис, пример и объяснение своими словами. Модель соберёт текст; достоверность примера и качество аргумента не оцениваются.",
+      ruInput("thesis", "Тезис", "", true) +
+        ruInput("example", "Свой пример", "", true) +
+        ruInput("explain", "Как пример подтверждает тезис", "", true) +
+        ruInput("conclusion", "Вывод", "", true),
+      "Собрать аргумент",
+      () => ({
+        answer: ["thesis", "example", "explain", "conclusion"]
+          .map(ruValue)
+          .map(ruSentence)
+          .join("\n\n"),
+        note: "Текст собран из твоих формулировок. Проверь связь примера с тезисом и фактическую точность.",
+      }),
+    );
+    return;
+  }
+  if (c.id === "k056") {
+    ruForm(
+      c,
+      "Редактирование своего текста",
+      "Проверка близких повторов и ограниченного списка речевых излишеств. Это не полная проверка орфографии, пунктуации или грамматики.",
+      ruInput(
+        "text",
+        "Текст для проверки",
+        "Он вернулся обратно домой. Он рассказал рассказ о поездке.",
+        true,
+      ),
+      "Найти повторы и излишества",
+      () => {
+        const text = ruValue("text"),
+          words = text.toLowerCase().match(/[а-яё]+/gu) || [];
+        if (!words.length) throw Error("Введи текст на русском языке.");
+        const stop = new Set([
+            "и",
+            "в",
+            "на",
+            "с",
+            "к",
+            "у",
+            "а",
+            "но",
+            "не",
+            "по",
+            "о",
+            "из",
+            "за",
+            "что",
+            "как",
+            "это",
+            "он",
+            "она",
+            "оно",
+            "они",
+            "я",
+            "мы",
+            "ты",
+            "вы",
+            "его",
+            "её",
+            "их",
+          ]),
+          repeats = [];
+        for (let i = 0; i < words.length; i++)
+          if (
+            words[i].length > 2 &&
+            !stop.has(words[i]) &&
+            words.slice(Math.max(0, i - 12), i).includes(words[i])
+          )
+            repeats.push(words[i]);
+        const rules = [
+            [
+              /вернул(?:ся|ась|ись|ось)\s+обратно/iu,
+              "«Вернуться обратно»: проверь, нужно ли слово «обратно».",
+            ],
+            [
+              /главн(?:ая|ую|ой)\s+сут[ьиь]/iu,
+              "«Главная суть»: возможно лишнее определение.",
+            ],
+            [
+              /свободн(?:ая|ую|ой)\s+ваканси/iu,
+              "«Свободная вакансия»: обычно достаточно «вакансия».",
+            ],
+            [
+              /перв(?:ый|ого|ым)\s+дебют/iu,
+              "«Первый дебют»: обычно достаточно «дебют».",
+            ],
+            [
+              /памятн(?:ый|ого|ым)\s+сувенир/iu,
+              "«Памятный сувенир»: проверь необходимость определения.",
+            ],
+            [
+              /рассказал(?:а|и)?\s+рассказ/iu,
+              "«Рассказал рассказ»: возможен однокоренной повтор.",
+            ],
+          ],
+          notes = rules.filter(([r]) => r.test(text)).map(([, s]) => s);
+        if (repeats.length)
+          notes.unshift(
+            "Близкий повтор: " + [...new Set(repeats)].join(", ") + ".",
+          );
+        return {
+          answer: notes.length
+            ? notes.join("\n")
+            : "В рамках этой проверки замечаний не найдено.",
+          note: "Это подсказки для редактирования, а не подтверждение полной грамотности. Повтор может быть художественным приёмом.",
+        };
+      },
+    );
+    return;
+  }
+  guidedWorkbench(c);
 }
 // Essays now use their own writing structure instead of an unrelated word tool.
-const ruTopicOpen=openCard;openCard=function(id){ruTopicOpen(id);const c=DB.cards.find(c=>c.id===id);if(c?.subject==='Русский язык'&&c.kind==='essay'&&$('#knowledge-dialog').open){$('#jump-task')?.remove();$('#topic-workbench')?.remove();russianWorkbench(c);}};
-window.RussianTopics={ruPOS,ruNN,ruNe};
+const ruTopicOpen = openCard;
+openCard = function (id) {
+  ruTopicOpen(id);
+  const c = DB.cards.find((c) => c.id === id);
+  if (
+    c?.subject === "Русский язык" &&
+    c.kind === "essay" &&
+    $("#knowledge-dialog").open
+  ) {
+    $("#jump-task")?.remove();
+    $("#topic-workbench")?.remove();
+    russianWorkbench(c);
+  }
+};
+window.RussianTopics = { ruPOS, ruNN, ruNe };

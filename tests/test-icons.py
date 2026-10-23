@@ -1,6 +1,6 @@
 """Validate committed app-icon resources without external dependencies."""
 from pathlib import Path
-import struct,json,hashlib,xml.etree.ElementTree as ET
+import struct,json,hashlib,re,xml.etree.ElementTree as ET
 root=Path(__file__).resolve().parents[1]
 def png(p,size):
  data=p.read_bytes();assert data[:8]==b'\x89PNG\r\n\x1a\n';assert struct.unpack('>II',data[16:24])==(size,size),p
@@ -18,6 +18,6 @@ assert adaptive.find('foreground').attrib[ns+'drawable']=='@drawable/ic_launcher
 assert '<text' not in (root/'web-source/assets/branding/opora-blue.svg').read_text()
 config=json.loads((root/'windows/package.json').read_text());assert config['build']['win']['icon']=='app/icon.ico' and config['build']['win']['signAndEditExecutable'] is True
 manifest=json.loads((root/'web-source/manifest.webmanifest').read_text());assert all(i['src'].endswith('?v=blue1') for i in manifest['icons'])
-assert 'icon:path.join(__dirname,\'icon.ico\')' in (root/'windows/app/main.cjs').read_text()
-assert 'opora-1.0.0-text-spacing1' in (root/'web-source/sw.js').read_text()
+assert re.search(r'icon:\s*path\.join\(__dirname,\s*[\'"]icon\.ico[\'"]\)', (root/'windows/app/main.cjs').read_text())
+assert 'opora-2.0.0-main1' in (root/'web-source/sw.js').read_text()
 print('ICON_ASSETS_OK: shared PWA images, Android legacy/adaptive, outlined glyph, seven-size Windows ICO')
