@@ -1,6 +1,6 @@
 /** One current About screen: do not stack outdated release notices. */
 (() => {
-  const cacheName = "opora-2.0.0-main1";
+  const cacheName = "opora-2.0.0-main2";
   function render() {
     const essays = DB.cards.filter((card) => card.kind === "essay").length;
     const biology = DB.cards.filter((card) => card.subject === "Биология");

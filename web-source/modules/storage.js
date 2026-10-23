@@ -1,7 +1,9 @@
 /** Versioned local stores. Writes commit only after persistent storage succeeds. */
 window.OporaV2 = (() => {
+  // Store values are JSON data; this also works in older mobile WebViews.
+  const clone = (value) => JSON.parse(JSON.stringify(value));
   function createStore(key, fallback, validate) {
-    let value = structuredClone(fallback);
+    let value = clone(fallback);
     let readError = "";
     try {
       const raw = localStorage.getItem(key);
@@ -14,13 +16,13 @@ window.OporaV2 = (() => {
       readError = `Не удалось прочитать ${key}. Данные не перезаписаны. Сохрани резервную копию перед восстановлением.`;
     }
     return {
-      get: () => structuredClone(value),
+      get: () => clone(value),
       error: () => readError,
       set(next) {
         if (readError) throw new Error(readError);
         if (!validate(next)) throw new Error("Проверь формат данных.");
         localStorage.setItem(key, JSON.stringify(next));
-        value = structuredClone(next);
+        value = clone(next);
       },
     };
   }

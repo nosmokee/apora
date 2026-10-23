@@ -50,7 +50,7 @@ const { chromium } = require("playwright"),
   };
   let cache = await p.evaluate(async () => ({
     names: await caches.keys(),
-    urls: (await (await caches.open("opora-2.0.0-main1")).keys()).map(
+    urls: (await (await caches.open("opora-2.0.0-main2")).keys()).map(
       (r) => r.url,
     ),
   }));
@@ -77,7 +77,7 @@ const { chromium } = require("playwright"),
   );
   ok(
     await p.evaluate(async () =>
-      (await caches.keys()).includes("opora-2.0.0-main1"),
+      (await caches.keys()).includes("opora-2.0.0-main2"),
     ),
     "offline kept",
   );

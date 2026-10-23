@@ -84,7 +84,11 @@
       try {
         const row = {
           id:
-            lesson?.id || "lesson_" + crypto.randomUUID().replaceAll("-", "_"),
+            lesson?.id ||
+            "lesson_" +
+              Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+                byte.toString(16).padStart(2, "0"),
+              ).join(""),
         };
         for (const key of ["subject", "start", "end", "room", "note"])
           row[key] = $("#schedule-" + key).value.trim();

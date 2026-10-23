@@ -3,7 +3,7 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),path
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.OPORA_CHROMIUM||'/usr/local/bin/chromium',args:['--no-sandbox']});
  const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
- await context.addInitScript(()=>{if(!localStorage.getItem('opora-v2-test-seeded')){localStorage.setItem('opora-favorites','["work-captain"]');localStorage.setItem('opora-v2-test-seeded','yes');}});
+ await context.addInitScript(()=>{window.structuredClone=undefined;crypto.randomUUID=undefined;if(!localStorage.getItem('opora-v2-test-seeded')){localStorage.setItem('opora-favorites','["work-captain"]');localStorage.setItem('opora-v2-test-seeded','yes');}});
  const p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
  await p.goto('file://'+path.resolve(__dirname,'../index.html'));await p.waitForSelector('#subject-search');
  let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++},equal=(a,b,m)=>{assert.deepEqual(a,b,m);checks++};

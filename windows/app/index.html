@@ -7324,7 +7324,7 @@ renderAbout = function () {
       ) {
         let n = 0;
         for (const key of await caches.keys())
-          if (/^opora-/.test(key) && key !== "opora-2.0.0-main1") {
+          if (/^opora-/.test(key) && key !== "opora-2.0.0-main2") {
             await caches.delete(key);
             n++;
           }
@@ -8476,8 +8476,10 @@ window.OporaExams = {
 
 /** Versioned local stores. Writes commit only after persistent storage succeeds. */
 window.OporaV2 = (() => {
+  // Store values are JSON data; this also works in older mobile WebViews.
+  const clone = (value) => JSON.parse(JSON.stringify(value));
   function createStore(key, fallback, validate) {
-    let value = structuredClone(fallback);
+    let value = clone(fallback);
     let readError = "";
     try {
       const raw = localStorage.getItem(key);
@@ -8490,13 +8492,13 @@ window.OporaV2 = (() => {
       readError = `Не удалось прочитать ${key}. Данные не перезаписаны. Сохрани резервную копию перед восстановлением.`;
     }
     return {
-      get: () => structuredClone(value),
+      get: () => clone(value),
       error: () => readError,
       set(next) {
         if (readError) throw new Error(readError);
         if (!validate(next)) throw new Error("Проверь формат данных.");
         localStorage.setItem(key, JSON.stringify(next));
-        value = structuredClone(next);
+        value = clone(next);
       },
     };
   }
@@ -8642,7 +8644,11 @@ window.OporaV2 = (() => {
       try {
         const row = {
           id:
-            lesson?.id || "lesson_" + crypto.randomUUID().replaceAll("-", "_"),
+            lesson?.id ||
+            "lesson_" +
+              Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+                byte.toString(16).padStart(2, "0"),
+              ).join(""),
         };
         for (const key of ["subject", "start", "end", "room", "note"])
           row[key] = $("#schedule-" + key).value.trim();
@@ -9121,7 +9127,7 @@ window.OporaV2 = (() => {
 
 /** One current About screen: do not stack outdated release notices. */
 (() => {
-  const cacheName = "opora-2.0.0-main1";
+  const cacheName = "opora-2.0.0-main2";
   function render() {
     const essays = DB.cards.filter((card) => card.kind === "essay").length;
     const biology = DB.cards.filter((card) => card.subject === "Биология");
