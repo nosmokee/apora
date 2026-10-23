@@ -168,6 +168,7 @@ jobs:
           NODE_PATH="$RUNNER_TEMP/exam-deps/node_modules" node tests/test-button-spacing.cjs
           NODE_PATH="$RUNNER_TEMP/exam-deps/node_modules" node tests/test-opora-v2.cjs
           NODE_PATH="$RUNNER_TEMP/exam-deps/node_modules" node tests/test-opora-v2-pwa.cjs
+          NODE_PATH="$RUNNER_TEMP/exam-deps/node_modules" node tests/test-translation-format.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: offline-exam-test-results
